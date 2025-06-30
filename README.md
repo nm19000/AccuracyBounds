@@ -1,26 +1,46 @@
-# Generic Python Template
+# Accuracy Bounds
 
-A generic Python project template for MF-DAS. Use this for "standard" Python packages.
+## Accuracy Bound for Inverse Problems
 
-After initializing your project from this template I would advise to do the following:
+Computation of worst-case and average kernel size from [1] for an inverse problem with noise of the form: 
+$$\text{Given measurements } y = F(x,e)=Ax+e \text{ of } x \in \mathcal{M}_1 \subset \mathbb{R}^N \text{ and } e \in \mathcal{E} \subset \mathbb{R}^m, \text{ recover } x.$$
 
-* Enable GitHub Pages by going to `Settings` -> `Pages` and under `Build and deployment` subsection `Source` choose `GitHub Actions` instead of `Deploy from a branch`.
-* Change the name of your package by checking out the project and doing `git mv src/project_name src/your_actual_project_name` where `your_actual_project_name` is the name you chose for your project. After that `git commit -am "change package name"` and `git push`.
-* Change the project name and other information in the `pyproject.toml`. Commit changes with `git commit -am "updated pyproject.toml"` and `git push`.
-* Open .githubt/workflows/pdoc.yml in an editor and change `project_name` to the proper project name. Commit changes with `git commit -am "updated documentation build pipeline"` and `git push`.
+Initial algoritms converge under the assumption that $\pi_1\left(P_{\mathcal{N}(F)^\perp}(x,e) - P_{\mathcal{N}(F)}(x,e)\right) \in \mathcal{M}_1.$
 
-# GitHub Actions
+### Algoritm for computing the worst-case kernel size
 
-CI/CD tasks for your project will be handled by GitHub Actions which are CI/CD pipelines described in a YAML-based language. Here we have a list of them that you'll need to include in your project and ensure they are working correctly.
+1) Randomly with any distribution $\mu$ sample $\{y_i\}_{i=1}^k \subset \mathcal{M}_2 = A(\mathcal{M}_1)$ for $k \in \mathbb{N}$. For incresing $k$ only new $y_i \in \mathcal{M}_2$ are added and the old sampled points are kept.
+2) Compute $\diam\left(\pi_1\left(F_{y_i}\right)\right) = \sup_{x,x' \in \pi_1\left(F_{y_i}\right)} d_1(x,x')$ using a finite approximation $F_{y_i}^n \subseteq F_{y_i}$ with $|F_{y_i}^n|=n$, where $n = n(k)$ is a function of $k$ such that $n \geq k$ and $n \to \infty$ when $k \to \infty$. \\
+    Set $F^0_{y_i} = \emptyset$ and $x^\perp_i = \pi_1\left(F^\dagger y_i\right) \in P_{\mathcal{N}(F)^\perp}\left(\mathcal{M}_1\right)$  (Actually we do not store $F^n_{y_i}$ ever and only store the previous estimate of the diameter). Then, iteratively for $n \in \mathbb{N}$ for randomly sampled $x_n \in \mathcal{M}_1$, if
+       $$
+        e_n:= y_i - F(x_n,0)\in \mathcal{E},
+       $$
+    let $F^n_{y_i}  = F^{n-1}_{y_i}  \cup \{x_n\}$ with the $x_n$ chosen as above. \\
+    Set $\diam(\pi_1\left(F^0_{y_i}\right))=0$. Then, for each $n \in \mathbb{N}$ if 
+        $$
+        \|\pi_1\left(P_{\mathcal{N}(F)}(x_n,e_n)\right)\| = \|\pi_1\left((I-F^{\dagger}F)(x_n,e_n)\right)\| > \|\pi_1\left((I-F^{\dagger}F)(x_{n-1},e_{n-1})\right)\|,
+        $$
+    set $\diam(\pi_1\left(F^n_{y_i}\right))= 2\|\pi_1\left((I-F^{\dagger}F)(x_n,e_n)\right)\|$ and if 
+        $$
+        \|\pi_1\left(P_{\mathcal{N}(F)}(x_n,e_n)\right)\| = \|\pi_1\left((I-F^{\dagger}F)(x_n,e_n)\right)\| \leq  \|\pi_1\left((I-F^{\dagger}F)(x_{n-1},e_{n-1})\right)\|,$$
+    set $\diam(\pi_1\left(F^n_{y_i}\right))= 2\|\pi_1\left((I-F^{\dagger}F)(x_{n-1},e_{n-1})\right)\|$.
+3) Now obtain the approximate worst case kernel size by 
+       $$\operatorname{kersize}^\text{w}(\mathcal{M}_1, A, \mathcal{E})_{k} = \max_{i \in \{1, ..., k\}} \diam\left(\pi_1\left(F^{n(k)}_{y_i}\right)\right).$$
 
-## Testing
+### Algoritm for computing the average kernel size
 
-Taken care of in `.github/workflows/python-app.yml`. By default `pytest` is used. Find tests under `test/` and test your code religiously. No untested or undocumented code is allowed.
+1) Randomly with any distribution $\mu$ sample $\{y_i\}_{i=1}^k \subset \mathcal{M}_2 = A(\mathcal{M}_1)+\mathcal{E}$ for $k \in \mathbb{N}$. For increasing $k$ only new $y_i \in \mathcal{M}_2$ are added and the old sampled points are kept.
+2) For each $i \in \{1,...,k\}$, set $F^0_{y_i} = \emptyset$. Then, iteratively for fixed $n=n(k) \in \mathbb{N}$ for randomly sampled $x_n \in \mathcal{M}_1$, if
+        
+$$e_n:= F(x_n,0)- y_i \in \mathcal{E},$$
 
-## Documentation Building
+let $F^n_{y_i}  = F^{n-1}_{y_i}  \cup \{x_n\}$ with the $x_n$ choosen as above. Set 
+$$
+    \|v_n^i\|= \|\pi_1\left((I-F^{\dagger}F)(x_n,e_n)\right)\|.
+$$
 
-Taken care of in `.github/workflows/pdoc.yml`. The workflow will take care of building and publishing project documentation from Python docstrings. You need to use the `numpy` docstring format. Find the description of it [here](https://numpydoc.readthedocs.io/en/latest/format.html). The documentation will be built and published under dlr-mf-das.github.io/general-template where you need to replace `general-template` with your repository name.
+3) Now obtain the approximate average case kernel size by $$\operatorname{ker}^a(F, \mathcal{M}_1, \mathcal{E},p)_{k}^p = (F_*\mu)(\mathcal{M}_2) 2^p/k \sum_{i=1}^k 1/n(i) \sum_{l=1}^{n(i)} \| v_l^i \|^p.$$
+4) For any $\delta >0$, obtain confidence intervals $c(k,\delta) = c(k,\delta,F, \mathcal{M}_1, \mathcal{E},p)$ with probability at least $1-c(k,\delta)$ using Hoeffding's inequality for exchangeable random variables.
 
-## Python Package Publishing
-
-Taken care of in `.github/workflows/python-publish.yml`. This workflow is executed every time a new release is created. Make sure to update the version number in `pyproject.toml` before creating a release. This number is used to create the Python package archive published to MF-DAS pypi. If the package with that version number was previously uploaded to PyPi this workflow will fail.
+# References
+[1] Gottschling, Nina Maria, et al. "On the existence of optimal multi-valued decoders and their accuracy bounds for undersampled inverse problems." arXiv preprint arXiv:2311.16898 (2023).
