@@ -10,7 +10,7 @@ $$
 
 Initial algoritms converge under the assumption that 
 $$
-\pi_1(P_{\mathcal{N}(F)^\perp}(x,e) - P_{\mathcal{N}(F)}(x,e)) \in \mathcal{M}_1.
+\pi_1(P_{\mathcal{N}(F)^L}(x,e) - P_{\mathcal{N}(F)}(x,e)) \in \mathcal{M}_1.
 $$
 
 ### Algoritm for computing the worst-case kernel size
@@ -27,7 +27,7 @@ $$
 using a finite approximation $F_{y_i}^n \subseteq F_{y_i}$ with $|F_{y_i}^n|=n$, where $n = n(k)$ is a function of $k$ such that $n \geq k$ and $n \to \infty$ when $k \to \infty$. 
 Set $F^0_{y_i} = \emptyset$ and 
 $$
-x^\perp_i = \pi_1(F^\dagger y_i) \in P_{\mathcal{N}(F)^\perp}(\mathcal{M}_1).
+x^L_i = \pi_1(F^t y_i) \in P_{\mathcal{N}(F)^L}(\mathcal{M}_1).
 $$ 
 Then, iteratively for $n \in \mathbb{N}$ for randomly sampled $x_n \in \mathcal{M}_1$, if
        $$
@@ -36,19 +36,19 @@ Then, iteratively for $n \in \mathbb{N}$ for randomly sampled $x_n \in \mathcal{
     let $F^n_{y_i}  = F^{n-1}_{y_i}  \cup \{x_n\}$ with the $x_n$ chosen as above. 
     Set $\text{diam}(\pi_1(F^0_{y_i}))=0$. Then, for each $n \in \mathbb{N}$ if 
         $$
-        ||\pi_1(P_{\mathcal{N}(F)}(x_n,e_n))|| = ||\pi_1((I-F^{\dagger}F)(x_n,e_n))|| > ||\pi_1((I-F^{\dagger}F)(x_{n-1},e_{n-1}))||,
+        ||\pi_1(P_{\mathcal{N}(F)}(x_n,e_n))|| = ||\pi_1((I-F^{t}F)(x_n,e_n))|| > ||\pi_1((I-F^{t}F)(x_{n-1},e_{n-1}))||,
         $$
     set 
     $$
-    \text{diam}(\pi_1(F^n_{y_i}))= 2||\pi_1((I-F^{\dagger}F)(x_n,e_n))||
+    \text{diam}(\pi_1(F^n_{y_i}))= 2||\pi_1((I-F^{t}F)(x_n,e_n))||
     $$ 
     and if 
         $$
-        ||\pi_1(P_{\mathcal{N}(F)}(x_n,e_n))|| = ||\pi_1((I-F^{\dagger}F)(x_n,e_n))|| \leq  ||\pi_1((I-F^{\dagger}F)(x_{n-1},e_{n-1}))||,
+        ||\pi_1(P_{\mathcal{N}(F)}(x_n,e_n))|| = ||\pi_1((I-F^{t}F)(x_n,e_n))|| \leq  ||\pi_1((I-F^{t}F)(x_{n-1},e_{n-1}))||,
         $$
     set 
     $$
-    \text{diam}(\pi_1(F^n_{y_i}))= 2||\pi_1((I-F^{\dagger}F)(x_{n-1},e_{n-1}))||.
+    \text{diam}(\pi_1(F^n_{y_i}))= 2||\pi_1((I-F^{t}F)(x_{n-1},e_{n-1}))||.
     $$
 3) Now obtain the approximate worst case kernel size by 
        $$
@@ -70,7 +70,7 @@ $$
 
 let $F^n_{y_i}  = F^{n-1}_{y_i}  \cup \{x_n\}$ with the $x_n$ choosen as above. Set 
 $$
-    ||v_n^i||= ||\pi_1((I-F^{\dagger}F)(x_n,e_n))||.
+    ||v_n^i||= ||\pi_1((I-F^{t}F)(x_n,e_n))||.
 $$
 
 3) Now obtain the approximate average case kernel size by 
