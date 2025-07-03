@@ -21,7 +21,7 @@ def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
     for x_n in target_data:
         e_n = input_data_point - np.dot(A,x_n) # Compute noise vector
 
-        if np.linalg.norm(e_n,p) <= 2*epsilon:  # Check if noise is below noiselevel
+        if np.linalg.norm(e_n,p) <= epsilon:  # Check if noise is below noiselevel
             # add traget data point x_n to feasible set
             feas_set_y.append(x_n)
 
@@ -110,7 +110,7 @@ def diams_feasibleset_inv_sym(A, input_data_point, target_data, p, epsilon):
         xcomp = len(x_n)-1
         e_n = input_data_point - np.dot(A,x_n) # Compute noise vector
 
-        if np.linalg.norm(e_n,p) <= 2*epsilon:  # Check if noise is below noiselevel
+        if np.linalg.norm(e_n,p) <= epsilon:  # Check if noise is below noiselevel
             # Project onto the null space of F
             proj_nullspace = np.dot(proj_ns_F, np.hstack((x_n, e_n)))[0:xcomp] # Project (x_n, e_n) onto nullspace of F, only take dim of x_n
 
