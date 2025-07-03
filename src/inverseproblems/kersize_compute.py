@@ -1,5 +1,5 @@
 import numpy as np
-from .utils import projection_nullspace, apply_forwardmodel
+from .utils import projection_nullspace_operator
 
 def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
     """
