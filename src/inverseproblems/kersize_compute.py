@@ -1,5 +1,6 @@
 import numpy as np
 from .utils import projection_nullspace_operator
+import torch
 
 def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
     """
@@ -186,3 +187,31 @@ def av_kernelsize(A, input_data, target_data, p, epsilon):
     av_kersize =  np.power(av_kersize, 1/p)
     
     return av_kersize
+
+
+def wc_kernelsize_nosym(A, input_data, target_data, p_X, p_Y, epsilon):
+   
+
+    # Convert input_data to torch tensor and move to GPU if available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    x = torch.tensor(input_data, dtype=torch.float32, device=device)
+    n = x.shape[0]
+    # If x has shape (n, w, h, c, p), compute pairwise distances over all dimensions except the first
+    # Flatten all but the first dimension for distance computation
+    x_flat = x.reshape(n, -1)  # shape (n, D)
+    diff = x_flat.unsqueeze(1) - x_flat.unsqueeze(0)  # shape (n, n, D)
+    dist = torch.norm(diff, p=p_Y, dim=-1)  # shape (n, n)
+
+    same_feasible = dist<2*epsilon
+
+    # Now compute pairwise distances for target_data, but only where same_feasible is True
+    target = torch.tensor(target_data, dtype=torch.float32, device=device)
+    target_flat = target.reshape(target.shape[0], -1)  # shape (n, D)
+    target_diff = target_flat.unsqueeze(1) - target_flat.unsqueeze(0)  # shape (n, n, D)
+    target_dist = torch.norm(target_diff, p=p_X, dim=-1)  # shape (n, n)
+
+    # Mask target_dist with same_feasible, use nan instead of 0
+    masked_target_dist = torch.where(same_feasible, target_dist, torch.tensor(float('nan'), device=device))
+
+
+    return torch.nanmax(masked_target_dist, device = device).cpu().numpy()  
