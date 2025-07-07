@@ -2,6 +2,8 @@
 
 ## Accuracy Bound for Inverse Problems
 
+
+
 Computation of worst-case and average kernel size from [1] for an inverse problem with noise of the form: 
 
 $$
