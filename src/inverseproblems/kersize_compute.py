@@ -189,7 +189,7 @@ def av_kernelsize(A, input_data, target_data, p, epsilon):
     return av_kersize
 
 
-def wc_kernelsize_nosym(A, input_data, target_data, p_X, p_Y, epsilon):
+def wc_kernelsize_nosym_cuda(A, input_data, target_data, p_X, p_Y, epsilon):
    
 
     # Convert input_data to torch tensor and move to GPU if available
