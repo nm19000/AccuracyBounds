@@ -1,5 +1,5 @@
 import numpy as np
-from .utils import projection_nullspace_operator
+from utils import projection_nullspace_operator
 import torch
 
 def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
@@ -188,9 +188,53 @@ def av_kernelsize(A, input_data, target_data, p, epsilon):
     
     return av_kersize
 
+def wc_kernelsize_sym_cuda(A, F_null, input_data, target_data, p_X, p_Y, epsilon):
+
+    if F_null is None:
+        # Compute Moore-Penrose-Inverse of F
+        F = np.hstack((A, np.eye(A.shape[0])))  # Construct F: (A | I) 
+        F_null = projection_nullspace_operator(F)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    x = torch.tensor(target_data, dtype=torch.float32, device=device)
+    p = x.shape[0]
+    n = x.shape[1]
+    x_flat = x.reshape(p, -1)
+
+    y = torch.tensor(input_data, dtype=torch.float32, device=device)
+    q = y.shape[0]
+    y_flat = y.reshape(q, -1)
+
+    A_t = torch.tensor(A, dtype = torch.float32).T
+
+   
+    e_diff = -(x_flat @A_t)[:, None, :]+ y_flat[None, :,:] # Calculating e_{i,j} =  y_i- Ax_j for every i,j
+    feasible_appartenance = torch.norm(e_diff,p = p_Y, dim = -1)<epsilon # x_j belongs in F_{y_i} iff feasible_appartenance[j,i] is true
+    feasible_appartenance = feasible_appartenance.unsqueeze(-1)
+    
+    nanvals = torch.full_like(e_diff,float('nan'), device=device)
+    e_diff = torch.where(feasible_appartenance, e_diff, nanvals) # Masking with nan (so that it can be reused easily for the average kernel size)
+    
+    x_exp = x_flat[:,None, :].expand(-1, q, -1)
+    x_e_concat = torch.cat([x_exp, e_diff], dim = -1)  # Concatenating every x_i to each e_{i,j} 
+    nm = x_e_concat.shape[-1]
+ 
+    Fy_projs = x_e_concat.reshape(-1, nm)@(F_null.T) # Projectng each concatenation if they are in the feasible set. (if they are not, the concatenation will contain some nan and the operation will not be possible)
+    Fy_projs = Fy_projs.reshape(p,q,nm)[:,:,:n]  # Only take the x part
+
+    # it seems that torch.einsum('pqd,md->pqm', x_e_concat, F_null) coule be used, but i don't master it. I mention it because it looks fancy
+    target_dists = 2*torch.norm(Fy_projs, p = p_X,dim = -1)
+    return np.nanmax(target_dists.cpu().numpy()) 
+
 
 def wc_kernelsize_nosym_cuda(A, input_data, target_data, p_X, p_Y, epsilon):
-   
+    '''
+    Warning : here, input_data and target_data have to be linked by input_data = A.target_data. 
+    This is not the case in the symetric case
+
+    This can be computed prealably. I didnt put it in the function because foor some applications,
+        the forward is not applied per point, but it is done jointly
+    '''
 
     # Convert input_data to torch tensor and move to GPU if available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
