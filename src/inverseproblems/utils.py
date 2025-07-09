@@ -2,6 +2,8 @@ import numpy as np
 from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 from scipy.sparse import coo_matrix, csc_matrix
+from scipy.sparse.linalg import svds
+
 
 #To calculate operators in the form of matrices
 class MatrixOpCalculator:
