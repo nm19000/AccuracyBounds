@@ -5,7 +5,7 @@ from scipy.sparse import coo_matrix, csc_matrix
 from scipy.sparse.linalg import svds
 
 
-#To calculate operators in the form of matrices
+#To calculate operators in the form of matrices (suits better to big operators)
 class MatrixOpCalculator:
     def __init__(self, n_in, n_out, Operator, num_workers = None, singular_threshold_ratio = 0.001):
         self.n_in = n_in
