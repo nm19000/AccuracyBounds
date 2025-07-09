@@ -188,7 +188,60 @@ def av_kernelsize(A, input_data, target_data, p, epsilon):
     
     return av_kersize
 
-def wc_kernelsize_sym_cuda(A, F_null, input_data, target_data, p_X, p_Y, epsilon):
+def wc_kernelsize_nosym_crossbatch_cuda(A, batch1, batch2, p_X, p_Y, epsilon):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    input1, target1 = batch1
+    input2,target2 = batch2
+
+    y1 = torch.tensor(input1, dtype=torch.float32, device=device)
+    n1 = y1.shape[0]
+    y1_flat = y1.reshape(n1, -1)
+
+    y2 = torch.tensor(input2, dtype=torch.float32, device=device)
+    n2 = y2.shape[0]
+    y2_flat = y2.reshape(n1, -1)
+
+    cross_dist = torch.norm(y1_flat[:,None,:]-y2_flat[None,:,:], dim = -1, p = p_Y)
+    same_feasible = cross_dist< 2*epsilon
+
+    x1 = torch.tensor(target1, dtype=torch.float32, device=device)
+    x1_flat = x1.reshape(n1, -1)
+
+    x2 = torch.tensor(target2, dtype=torch.float32, device=device)
+    x2_flat = x2.reshape(n1, -1)
+
+    target_dists = torch.norm(x1_flat[:,None,:]-x2_flat[None,:,:], dim = -1, p = p_X)
+    masked_target_dist = torch.where(same_feasible, target_dists, torch.tensor(float('nan'), device=device))
+
+    return torch.nanmax(masked_target_dist)
+
+
+def wc_kernelsize_nosym_perbatch_cuda(A, input_data, target_data, p_X, p_Y, epsilon, batch_size):
+    p = input_data.shape[0]
+    n_batches = p//batch_size +1
+
+    current_kersize = 0
+    for i in range(n_batches):
+        idx_imin = i*batch_size
+        idx_imax = min(idx_imin+ batch_size, p)
+        
+        batch_i_current = (input_data[idx_imin:idx_imax], target_data[idx_imin:idx_imax])
+        for j in range(n_batches):
+            idx_jmin = j*batch_size
+            idx_jmax = min(idx_jmin+ batch_size, p)
+
+            batch_j_current = (input_data[idx_jmin:idx_jmax], target_data[idx_jmin:idx_jmax])
+
+            if i==j:
+                ks_batch = wc_kernelsize_nosym_batch_cuda(A, batch_i_current[0], batch_i_current[1], p_X = p_X, p_Y = p_Y, epsilon=epsilon)
+            else:
+                ks_batch = wc_kernelsize_nosym_crossbatch_cuda(A, batch_i_current, batch_j_current, p_X = p_X, p_Y = p_Y, epsilon=epsilon)
+            if ks_batch >current_kersize:
+                current_kersize = ks_batch
+    return current_kersize
+
+def wc_kernelsize_sym_batch_cuda(A, F_null, input_data, target_data, p_X, p_Y, epsilon):
 
     if F_null is None:
         # Compute Moore-Penrose-Inverse of F
@@ -226,8 +279,7 @@ def wc_kernelsize_sym_cuda(A, F_null, input_data, target_data, p_X, p_Y, epsilon
     target_dists = 2*torch.norm(Fy_projs, p = p_X,dim = -1)
     return np.nanmax(target_dists.cpu().numpy()) 
 
-
-def wc_kernelsize_nosym_cuda(A, input_data, target_data, p_X, p_Y, epsilon):
+def wc_kernelsize_nosym_batch_cuda(A, input_data, target_data, p_X, p_Y, epsilon):
     '''
     Warning : here, input_data and target_data have to be linked by input_data = A.target_data. 
     This is not the case in the symetric case
