@@ -80,7 +80,6 @@ class MatrixOpCalculator:
         return  np.eye(n)- range_basis.dot(range_basis.T)
 
 
-
 # Function to apply matrix transformation A to points
 def apply_forwardmodel(A, points):
     return np.dot(points, A.T)
