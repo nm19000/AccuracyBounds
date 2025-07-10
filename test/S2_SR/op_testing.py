@@ -301,6 +301,8 @@ if __name__ == '__main__':
         img_moments = img_moments_dic[subds]
         mu0, sigma0 = torch.tensor(distY_distr[subds]['mean']), torch.tensor(distY_distr[subds]['sigma'])
         opt_alpha = mu0/img_moments[0]
+
+        noise_level = mu0 + 2*sigma0
         for idxstr in tqdm(bar):
             img_folder = os.path.join(data_folder, idxstr)
             lr_path = f'{img_folder}/lr_res.tif'
