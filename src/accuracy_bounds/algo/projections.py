@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 # Function to apply matrix transformation A to points
 def apply_forwardmodel(A, points):
