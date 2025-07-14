@@ -1,5 +1,5 @@
 import numpy as np
-from accuracy_bounds.algo.feasibility import diams_feasibleset_inv, diams_feasibleset_inv_sym
+from .feasibility import diams_feasibleset_inv, diams_feasibleset_inv_sym
 
 def compute_av_kernel_size(A, input_data, target_data, p, q, epsilon, max_k):
 
