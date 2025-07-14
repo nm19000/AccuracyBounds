@@ -19,6 +19,16 @@ wc_kernelsize_sym_batch_cuda,
     wc_kernelsize_nosym_crossbatch_cuda,
     av_kernelsize,
     wc_kernelsize,
+    target_distances_samplingYX_perbatch_cuda,
+    distsXX_samplingYX_batch_cuda,
+    feasibleApp_samplingYX_batch_cuda,
+    kersize_samplingYX,
+    avgLB_samplingYX,
+    avgkersize_samplingYX,
+    target_distances_samplingX_batch_cuda,
+    target_distances_samplingX_crossbatch_cuda,
+    target_distances_samplingX_perbatch_cuda,
+    kersize_samplingX,
     diams_feasibleset_inv_sym,
     diams_feasibleset_inv_sym,
     diams_feasibleset_inv,
@@ -121,8 +131,13 @@ if __name__== '__main__':
             
         
         
-            KS = wc_kernelsize_nosym_perbatch_cuda(0, patched_lr, patched_hr, p_X=2, p_Y=2, epsilon = noise_level*(patchsize_Y**2), batch_size= batchsize)/(patchsize_X**2)
+            #KS = wc_kernelsize_nosym_perbatch_cuda(0, patched_lr, patched_hr, p_X=1, p_Y=2, epsilon = (noise_level*(patchsize_Y**2))**(1/2), batch_size= batchsize)/(patchsize_X**2)
+            #print(f'Kernelsize = {KS:2f}')
+            distsXX, feasible_appartenance = target_distances_samplingYX_perbatch_cuda(0, patched_lr, patched_hr, patched_lr, p_X=1, p_Y=2, epsilon = (noise_level*(patchsize_Y**2))**(1/2), batch_size = batchsize)
+            wc_kersize = kersize_samplingYX(distsXX, feasible_appartenance, p_X = 1)/(patchsize_X**2)
+            avg_LB =  avgLB_samplingYX(distsXX, feasible_appartenance, p_X = 1)/(patchsize_X**2)
+            avg_kersize = avgkersize_samplingYX(distsXX, feasible_appartenance, p_X = 1)/(patchsize_X**2)
 
-            print(f'Kernelsize = {KS:2f}')
+            print(f'Worst case kernelsize : {wc_kersize} \n Average lower bound : {avg_LB} \n Average kersize : {avg_kersize}')
             
 
