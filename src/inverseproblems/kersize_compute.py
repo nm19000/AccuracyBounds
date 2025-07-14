@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from scipy.sparse import csr_matrix, lil_matrix
 from joblib import Parallel, delayed
+from pdb import set_trace
 
 
 def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
@@ -360,6 +361,7 @@ We distinguish 2 kind of samplings :
 
 '''
 
+
 def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data, forwarded_target, p_X, p_Y, epsilon, batch_size):
     '''
     First, we determine which x belongs to which F_y
@@ -430,7 +432,10 @@ def distsXX_samplingYX_batch_cuda(A, target_data1, target_data2 , p_X):
     n1 = x1.shape[0]
     n2 = x2.shape[0]
 
-    distancesXX = torch.norm(x1[:,None, :]-x2[None,:,:], p = p_X, dim = -1) 
+    x1_flat = torch.tensor(x1.reshape(n1, -1), device = device)
+    x2_flat = torch.tensor(x2.reshape(n2, -1), device = device)
+
+    distancesXX = torch.norm(x1_flat[:,None, :]-x2_flat[None,:,:], p = p_X, dim = -1) 
     return distancesXX
 
 def feasibleApp_samplingYX_batch_cuda(A, input_data,forwarded_target, p_Y, epsilon):
@@ -441,7 +446,12 @@ def feasibleApp_samplingYX_batch_cuda(A, input_data,forwarded_target, p_Y, epsil
     forwarded_target = torch.tensor(forwarded_target, dtype = torch.float32, device = device)
     input_data = torch.tensor(input_data, dtype = torch.float32, device = device)
 
-    e_diff = -forwarded_target[:,None, :] + input_data[None,:,:]
+    n = input_data.shape[0]
+    m = forwarded_target.shape[0]
+    input_data_flat = torch.tensor(input_data.reshape(n,-1), device = device)
+    forwarded_flat = torch.tensor(forwarded_target.reshape(m,-1),device = device)
+
+    e_diff = -forwarded_flat[:,None, :] + input_data_flat[None,:,:]
 
     feasible_appartenance = np.asarray(torch.norm(e_diff,p = p_Y, dim = -1)<epsilon)
 
@@ -493,7 +503,6 @@ def avgLB_samplingYX(distsXX, feasible_appartenance, p_X):
     results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in range(p))
 
     return np.nanmean(np.asarray(list(results)))/(2**p_X)
-
 
 def avgkersize_samplingYX(distsXX, feasible_appartenance, p_X):
     def compute_mean_distance(y_idx, fa, dXX):
