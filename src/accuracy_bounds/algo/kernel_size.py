@@ -92,7 +92,7 @@ def av_kernelsize(A, input_data, target_data, p,q, epsilon, max_k):
             break
     
     av_kersize_list = av_kersize_list[:max_k-1] # TODO I took this from the previous implementation. SHouldnt it be :max_k ? 
-    av_kersize_list = np.cumsum(av_kersize_list) / np.arange(len(av_kersize_list))
+    av_kersize_list = np.cumsum(av_kersize_list) / np.arange(1, len(av_kersize_list)+1)
 
     # take power 1/p to obtain average kersize
     av_kersize_list =  np.power(av_kersize_list, 1/p)
