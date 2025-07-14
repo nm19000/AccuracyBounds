@@ -57,33 +57,40 @@ def diams_feasibleset_inv_sym(A, input_data_point, target_data, p,q, epsilon):
     proj_ns_F = projection_nullspace_operator(F)
 
     # Step 2: Compute feasible sets and diameters
-    max_diam_Fy = 0
-    diameter_mean_y = 0
     diam_y = []
 
+    if isinstance(target_data, np.ndarray) and target_data.ndim == 2:
+        target_data = target_data.reshape([target_data.shape[0],1,target_data.shape[1]])
+
     for x_n in target_data:
-        xcomp = len(x_n)-1
-        e_n = input_data_point - np.dot(A,x_n) # Compute noise vector
+        xcomp = x_n.shape[-1]-1
+        e_n = input_data_point - np.dot(x_n, A.T) # Compute noise vector
 
-        if np.linalg.norm(e_n,q) <= epsilon:  # Check if noise is below noiselevel
-            # Project onto the null space of F
-            proj_nullspace = np.dot(proj_ns_F, np.hstack((x_n, e_n)))[0:xcomp] # Project (x_n, e_n) onto nullspace of F, only take dim of x_n
+        feas_mask = np.linalg.norm(e_n,q,axis=-1) <= epsilon
 
-            # Compute diameter of feasible set based on projection onto null space
-            diameter = 2 * np.linalg.norm(proj_nullspace, ord = p)   
+        x_n, e_n = x_n[feas_mask], e_n[feas_mask]
 
-            #add to diam_y 
-            diam_y.append(diameter)
+        # Project onto the null space of F
+        proj_nullspace = np.dot(np.hstack((x_n, e_n)), proj_ns_F.T)[:, 0:xcomp] # Project (x_n, e_n) onto nullspace of F, only take dim of x_n
 
-            #get ascending diams
-            if diameter > max_diam_Fy:
-                max_diam_Fy = diameter
-                
+        # Compute diameter of feasible set based on projection onto null space
+        diameter = 2 * np.linalg.norm(proj_nullspace, ord = p, axis=-1)   
+
+        #add to diam_y 
+        diam_y.append(diameter)
+
+
+    diam_y = np.concatenate(diam_y)
+
     # obtain number of samples in feasible set (num_feas will be used for statistics later on)
     num_feas = len(diam_y)        
     # get mean over diams 
     if num_feas > 0:      
         diameter_mean_y = np.mean(np.power(diam_y,p))
+        max_diam_Fy = diam_y.max()
+    else:
+        diameter_mean_y = 0
+        max_diam_Fy = 0
 
     return diameter_mean_y, num_feas, max_diam_Fy
 
