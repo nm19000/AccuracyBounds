@@ -1,6 +1,6 @@
 import numpy as np
 
-from accuracy_bounds.algo.projections import projection_nullspace_operator
+from .projections import projection_nullspace_operator
 
 def compute_feasible_set(A, input_data_point, target_data, q, epsilon):
     """
