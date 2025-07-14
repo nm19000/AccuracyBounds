@@ -1,6 +1,9 @@
 import numpy as np
 #from utils import projection_nullspace_operator
 import torch
+from scipy.sparse import csr_matrix, lil_matrix
+from joblib import Parallel, delayed
+
 
 def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
     """
@@ -189,13 +192,11 @@ def av_kernelsize(A, input_data, target_data, p, epsilon):
     return av_kersize
 
 def wc_kernelsize_sym_crossbatch_cuda(A,F_null, batch1, batch2, p_X, p_Y, epsilon):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    input1, target1, forwarded_target1 = batch1
-    input2,target2, forwarded_target2 = batch2
+    input1, target1 = batch1
+    input2,target2 = batch2
 
-    return wc_kernelsize_sym_batch_cuda(A, F_null, input1, target2, forwarded_target2, p_X = p_X, p_Y = p_Y, epsilon = epsilon )
-
+    return wc_kernelsize_sym_batch_cuda(A, F_null, input1, target2, p_X = p_X, p_Y = p_Y, epsilon = epsilon )
 
 def wc_kernelsize_nosym_crossbatch_cuda(A, batch1, batch2, p_X, p_Y, epsilon):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -225,7 +226,7 @@ def wc_kernelsize_nosym_crossbatch_cuda(A, batch1, batch2, p_X, p_Y, epsilon):
 
     return np.nanmax(masked_target_dist.cpu().numpy())
 
-def wc_kernelsize_sym_perbatch_cuda(A, F_null, input_data, target_data, forwarded_target, p_X, p_Y, epsilon, batch_size):
+def wc_kernelsize_sym_perbatch_cuda(A, F_null, input_data, target_data, p_X, p_Y, epsilon, batch_size):
     '''
     forwarded input has to be target_data@(A.T) , or equivalent. 
     It is frequently the same as input_data, but in the description of the algorithm, that is not necessary
@@ -244,16 +245,16 @@ def wc_kernelsize_sym_perbatch_cuda(A, F_null, input_data, target_data, forwarde
         idx_imin = i*batch_size
         idx_imax = min(idx_imin+ batch_size, p)
         
-        batch_i_current = (input_data[idx_imin:idx_imax], target_data[idx_imin:idx_imax], forwarded_target[idx_imin:idx_imax])
+        batch_i_current = (input_data[idx_imin:idx_imax], target_data[idx_imin:idx_imax])
         for j in range(n_batches):
             idx_jmin = j*batch_size
             idx_jmax = min(idx_jmin+ batch_size, p)
 
-            batch_j_current = (input_data[idx_jmin:idx_jmax], target_data[idx_jmin:idx_jmax], forwarded_target[idx_jmin:idx_jmax])
+            batch_j_current = (input_data[idx_jmin:idx_jmax], target_data[idx_jmin:idx_jmax])
             
       
             if i==j:
-                ks_batch = wc_kernelsize_sym_batch_cuda(A,F_null, batch_i_current[0], batch_i_current[1], batch_i_current[2], p_X = p_X, p_Y = p_Y, epsilon=epsilon)
+                ks_batch = wc_kernelsize_sym_batch_cuda(A,F_null, batch_i_current[0], batch_i_current[1], p_X = p_X, p_Y = p_Y, epsilon=epsilon)
             else:
                 ks_batch = wc_kernelsize_sym_crossbatch_cuda(A, batch_i_current, batch_j_current, p_X = p_X, p_Y = p_Y, epsilon=epsilon)
             if ks_batch >current_kersize:
@@ -285,7 +286,7 @@ def wc_kernelsize_nosym_perbatch_cuda(A, input_data, target_data, p_X, p_Y, epsi
                 current_kersize = ks_batch
     return current_kersize
 
-def wc_kernelsize_sym_batch_cuda(A, F_null, input_data, target_data,forwarded_target, p_X, p_Y, epsilon):
+def wc_kernelsize_sym_batch_cuda(A, F_null, input_data, target_data, p_X, p_Y, epsilon):
     '''
     forwarded input has to be target_data@(A.T) , or equivalent. 
     It is frequently the same as input_data, but in the description of the algorithm, that is not necessary
@@ -305,8 +306,8 @@ def wc_kernelsize_sym_batch_cuda(A, F_null, input_data, target_data,forwarded_ta
     q = y.shape[0]
     y_flat = y.reshape(q, -1)
 
-    #A_t = torch.tensor(A, dtype = torch.float32).T
-    e_diff = -forwarded_target[:,None, :] + y_flat[None, :,:] # Calculating e_{i,j} =  y_i- Ax_j for every i,j
+    A_t = torch.tensor(A, dtype = torch.float32, device = device).T
+    e_diff = (-x_flat@A_t)[:,None, :] + y_flat[None, :,:] # Calculating e_{i,j} =  y_i- Ax_j for every i,j
     feasible_appartenance = torch.norm(e_diff,p = p_Y, dim = -1)<epsilon # x_j belongs in F_{y_i} iff feasible_appartenance[j,i] is true
     feasible_appartenance = feasible_appartenance.unsqueeze(-1)
     
@@ -347,3 +348,269 @@ def wc_kernelsize_nosym_batch_cuda(A, input_data, target_data, p_X, p_Y, epsilon
     masked_target_dist = torch.where(same_feasible, target_dist, torch.tensor(float('nan'), device=device))
     return np.nanmax(masked_target_dist.cpu().numpy())
 
+'''
+We distinguish 2 kind of samplings : 
+- The first is that we sample int the Y space the input_data and we look at which x is in which feasible set. 
+    This one is denoted by samplingYX
+
+- The second one is that we sample in the X space only, and the forward it without noise (if possible, or at least without explicit noise vector) into the y space.
+    Then, we check which x,x' belong to a common feasible set.
+    This one is denoted by samplingX
+
+
+'''
+
+def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data, forwarded_target, p_X, p_Y, epsilon, batch_size):
+    '''
+    First, we determine which x belongs to which F_y
+        For that, we split (target_data,forwarded_data) into batches, and input_data into batches as bell
+        And we construct the appartenance matrix  target_data x input_data (x,y)
+    
+    Then with dot product, we see xhich xi,xj belong to some same feasible set. 
+
+    so that we compute only the distances between those xi,xj
+    '''
+
+    n = input_data.shape[0]
+    m = target_data.shape[0]
+
+    n_batches_input = (n//batch_size)+1
+    n_batches_target = (m//batch_size)+1
+
+    feasible_appartenance = lil_matrix((m, n), dtype=np.float32)
+
+    for i_target in range(n_batches_target):
+        idx_imin = i_target*batch_size
+        idx_imax = min(idx_imin+ batch_size, m)
+
+        for j_input in range(n_batches_input):
+            idx_jmin = j_input*batch_size
+            idx_jmax = min(idx_jmin+batch_size, n)
+
+            feasible_small = feasibleApp_samplingYX_batch_cuda(A, input_data[idx_jmin:idx_jmax], forwarded_target[idx_imin:idx_imax], p_Y, epsilon)
+            feasible_small = csr_matrix(feasible_small)
+
+            feasible_appartenance[idx_imin:idx_imax, idx_jmin:idx_jmax] = feasible_small
+    feasible_appartenance = feasible_appartenance.tocsr()
+
+    
+    #print(feasible_appartenance.data.nbytes/(1024*1024), f'size data {feasible_appartenance.shape}') 
+    
+    common_feasible = feasible_appartenance@(feasible_appartenance.T)
+
+    distsXX = lil_matrix((m, m), dtype=np.float32)
+    
+    for i in range(n_batches_target):
+        idx_imin = i*batch_size
+        idx_imax = idx_imin+ batch_size
+
+        for j in range(n_batches_target):
+            idx_jmin = j*batch_size
+            idx_jmax = idx_jmin + batch_size
+
+
+            dists_small = np.array(distsXX_samplingYX_batch_cuda(A, target_data[idx_imin:idx_imax], target_data[idx_jmin:idx_jmax], p_X))
+            
+            common_feasible_small = common_feasible[idx_imin:idx_imax, idx_jmin:idx_jmax].toarray()
+            mask = common_feasible_small != 0
+
+            dists_small[~mask] = 0
+            dists_small = csr_matrix(dists_small)
+
+            distsXX[idx_imin:idx_imax, idx_jmin:idx_jmax] = dists_small
+
+    return distsXX, feasible_appartenance
+
+def distsXX_samplingYX_batch_cuda(A, target_data1, target_data2 , p_X):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    x1 = torch.tensor(target_data1, dtype = torch.float32,device = device )
+    x2 = torch.tensor(target_data2, dtype = torch.float32,device = device )
+
+    n1 = x1.shape[0]
+    n2 = x2.shape[0]
+
+    distancesXX = torch.norm(x1[:,None, :]-x2[None,:,:], p = p_X, dim = -1) 
+    return distancesXX
+
+def feasibleApp_samplingYX_batch_cuda(A, input_data,forwarded_target, p_Y, epsilon):
+    '''
+    Gets for a batch of x and a batch of y, which x belongs to which F_y
+    '''
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    forwarded_target = torch.tensor(forwarded_target, dtype = torch.float32, device = device)
+    input_data = torch.tensor(input_data, dtype = torch.float32, device = device)
+
+    e_diff = -forwarded_target[:,None, :] + input_data[None,:,:]
+
+    feasible_appartenance = np.asarray(torch.norm(e_diff,p = p_Y, dim = -1)<epsilon)
+
+    return feasible_appartenance # feasible appartenance is y vs x
+
+def kersize_samplingYX(distsXX, feasible_appartenance,p_X):
+    def compute_max_distance(y_idx, fa, dXX):
+        # Extract valid indices where feasible_appartenance[:, y_idx] is non-zero
+        valid_idx = fa[:, y_idx].nonzero()[0]
+        
+        if len(valid_idx) == 0:
+            return 0
+        
+        # Extract the submatrix from distsXX using valid indices
+        subdistXX = dXX[valid_idx, :][:, valid_idx]
+        subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
+        
+        # Compute the maximum distance
+        distmax = np.nanmax(subdistXX)
+        return distmax
+    
+
+    n,p = feasible_appartenance.shape
+    #distsXX = np.asarray(distsXX.to_dense())
+
+    results = Parallel(n_jobs=-1)(delayed(compute_max_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in range(p))
+    
+
+    return np.nanmax(np.array(list(results)))
+
+def avgLB_samplingYX(distsXX, feasible_appartenance, p_X):
+    def compute_mean_distance(y_idx, fa, dXX):
+        # Extract valid indices where feasible_appartenance[:, y_idx] is non-zero
+        valid_idx = fa[:, y_idx].nonzero()[0]
+        
+        if len(valid_idx) == 0:
+            return 0
+        
+        # Extract the submatrix from distsXX using valid indices
+        subdistXX = dXX[valid_idx, :][:, valid_idx]
+        subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
+        
+        size_feas = len(valid_idx)
+        return 2*np.nanmean(subdistXX**p_X)
+
+
+
+    n,p = feasible_appartenance.shape
+    results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in range(p))
+
+    return np.nanmean(np.asarray(list(results)))/(2**p_X)
+
+
+def avgkersize_samplingYX(distsXX, feasible_appartenance, p_X):
+    def compute_mean_distance(y_idx, fa, dXX):
+        # Extract valid indices where feasible_appartenance[:, y_idx] is non-zero
+        valid_idx = fa[:, y_idx].nonzero()[0]
+        
+        if len(valid_idx) == 0:
+            return 0
+        
+        # Extract the submatrix from distsXX using valid indices
+        subdistXX = dXX[valid_idx, :][:, valid_idx]
+        subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
+        
+        size_feas = len(valid_idx)
+        return 2*np.nanmean(subdistXX**p_X)
+    
+
+
+    n,p = feasible_appartenance.shape
+    results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in range(p))
+
+ 
+    return np.nanmean(np.asarray(results))**(1/p_X)
+
+
+
+def target_distances_samplingX_batch_cuda(A,input_data, target_data, p_X, p_Y, epsilon):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    x = torch.tensor(input_data, dtype=torch.float32, device=device)
+    n = x.shape[0]
+    # If x has shape (n, w, h, c, p), compute pairwise distances over all dimensions except the first
+    # Flatten all but the first dimension for distance computation
+    x_flat = x.reshape(n, -1)  # shape (n, D)
+    diff = x_flat.unsqueeze(1) - x_flat.unsqueeze(0)  # shape (n, n, D)
+    dist = torch.norm(diff, p=p_Y, dim=-1)  # shape (n, n)
+
+    same_feasible = dist<2*epsilon
+
+    # Now compute pairwise distances for target_data, but only where same_feasible is True
+    target = torch.tensor(target_data, dtype=torch.float32, device=device)
+    target_flat = target.reshape(target.shape[0], -1)  # shape (n, D)
+    target_diff = target_flat.unsqueeze(1) - target_flat.unsqueeze(0)  # shape (n, n, D)
+    target_dist = torch.norm(target_diff, p=p_X, dim=-1)  # shape (n, n)
+
+    masked_target_dist = torch.where(same_feasible, target_dist, torch.tensor(float('nan'), device=device))
+
+    # Convert masked_target_dist to numpy array
+    masked_target_dist_np = masked_target_dist.cpu().numpy()
+ 
+
+    return masked_target_dist_np, same_feasible
+
+def target_distances_samplingX_crossbatch_cuda(A, batch1, batch2, p_X, p_Y, epsilon):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    input1, target1 = batch1
+    input2,target2 = batch2
+
+    y1 = torch.tensor(input1, dtype=torch.float32, device=device)
+    n1 = y1.shape[0]
+    y1_flat = y1.reshape(n1, -1)
+
+    y2 = torch.tensor(input2, dtype=torch.float32, device=device)
+    n2 = y2.shape[0]
+    y2_flat = y2.reshape(n1, -1)
+
+    cross_dist = torch.norm(y1_flat[:,None,:]-y2_flat[None,:,:], dim = -1, p = p_Y)
+    same_feasible = cross_dist< 2*epsilon
+
+    x1 = torch.tensor(target1, dtype=torch.float32, device=device)
+    x1_flat = x1.reshape(n1, -1)
+
+    x2 = torch.tensor(target2, dtype=torch.float32, device=device)
+    x2_flat = x2.reshape(n1, -1)
+
+    target_dists = torch.norm(x1_flat[:,None,:]-x2_flat[None,:,:], dim = -1, p = p_X)
+    masked_target_dist = torch.where(same_feasible, target_dists, torch.tensor(float('nan'), device=device))
+    
+
+    # Convert masked_target_dist to numpy array
+    masked_target_dist_np = masked_target_dist.cpu().numpy()
+
+    return masked_target_dist_np, same_feasible
+
+def target_distances_samplingX_perbatch_cuda(A, input_data, target_data, p_X, p_Y, epsilon, batch_size):
+    n = target_data.shape[0]
+    n_batches = (n//batch_size)
+
+    masked_target_dists = np.zeros((n,n))
+    same_feasible = np.zeros((n,n))
+
+    for i in range(n_batches):
+        idx_imin = i*batch_size
+        idx_imax = min(idx_imin+ batch_size, n)
+        
+        batch_i_current = (input_data[idx_imin:idx_imax], target_data[idx_imin:idx_imax])
+        for j in range(i,n_batches):
+            idx_jmin = j*batch_size
+            idx_jmax = min(idx_jmin+ batch_size, n)
+
+            batch_j_current = (input_data[idx_jmin:idx_jmax], target_data[idx_jmin:idx_jmax])
+            
+      
+            if i==j:
+                masked_target_dists_local, same_feasible_local = target_distances_samplingX_batch_cuda(A,batch_i_current[0], batch_i_current[1], p_X, p_Y, epsilon )
+                masked_target_dists[idx_imin:idx_imax, idx_jmin:idx_jmax] = masked_target_dists_local
+                same_feasible[idx_imin:idx_imax, idx_jmin:idx_jmax] = same_feasible_local
+
+            else:
+                masked_target_dists_local, same_feasible_local = target_distances_samplingX_crossbatch_cuda(A, batch_i_current, batch_j_current, p_X, p_Y, epsilon)
+                masked_target_dists[idx_imin:idx_imax, idx_jmin:idx_jmax] = masked_target_dists_local
+                same_feasible[idx_imin:idx_imax, idx_jmin:idx_jmax] = same_feasible_local
+
+    return masked_target_dists, same_feasible
+
+def kersize_samplingX(masked_target_dists):
+    return np.nanmax(masked_target_dists)
+
+
+# TODO 2 test them on toy dataset + s2 data
