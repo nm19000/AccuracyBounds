@@ -75,7 +75,7 @@ def av_kernelsize(A, input_data, target_data, p,q, epsilon, max_k):
     """
 
     av_kersize_list = []
-    k = 1
+    k = 0
 
     if isinstance(input_data, np.ndarray) and input_data.ndim==2:
         # Adjust to batchsize 1
@@ -91,7 +91,7 @@ def av_kernelsize(A, input_data, target_data, p,q, epsilon, max_k):
         if k >= max_k: 
             break
     
-    av_kersize_list = av_kersize_list[:max_k-1] # TODO I took this from the previous implementation. SHouldnt it be :max_k ? 
+    av_kersize_list = av_kersize_list[:max_k]
     av_kersize_list = np.cumsum(av_kersize_list) / np.arange(1, len(av_kersize_list)+1)
 
     # take power 1/p to obtain average kersize
