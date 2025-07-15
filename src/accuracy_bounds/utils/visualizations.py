@@ -39,7 +39,7 @@ def visualize_ball_3d(points,
 def plot_avkersize_conv(av_kersize, av_kersizes, ker_size, max_k):
 
     # Plot results
-    x_axis = np.arange(2, max_k+1)
+    x_axis = np.arange(1, max_k+1)
     y_axis = np.array(av_kersizes)
     plt.plot(x_axis, y_axis)
     plt.axhline(ker_size, color='r')
