@@ -390,10 +390,18 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data, forwar
     feasible_appartenance = lil_matrix((m, n), dtype=np.float32)
 
     for i_target in range(n_batches_target):
+
+        ## TODO: Include dataloader here --> 
+        # 1) iterate over data loader (for batch in target_loader)
+        # 2) depending on dataset structure, get target_data out of batch
+        # 3) remove batch indexing from current code
         idx_imin = i_target*batch_size
         idx_imax = min(idx_imin+ batch_size, m)
 
         for j_input in range(n_batches_input):
+
+            ## TODO: Include dataloader here
+            # 1) Handle input data similar to target data described above
             idx_jmin = j_input*batch_size
             idx_jmax = min(idx_jmin+batch_size, n)
 
@@ -410,6 +418,7 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data, forwar
 
     distsXX = lil_matrix((m, m), dtype=np.float32)
     
+    # TODO: Why iterate this a second time? Why not computed in first loop as well? 
     for i in range(n_batches_target):
         idx_imin = i*batch_size
         idx_imax = idx_imin+ batch_size
