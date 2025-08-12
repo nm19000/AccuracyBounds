@@ -345,8 +345,6 @@ if __name__ == '__main__':
             plt.show()
             #set_trace()
 
-
-
             if check_DSOp:
                 hr_test=  torch.tensor(metrics.hr[:, 100:228, 100:228])
 
