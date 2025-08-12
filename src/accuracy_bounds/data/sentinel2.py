@@ -5,18 +5,19 @@ from torch.utils.data import Dataset
 import rasterio
 
 class SRDataset(Dataset):
-    def __init__(self, folder_path, suffixes=('lr', 'sr', 'hr')):
+    def __init__(self, folder_path, suffixes=('lr', 'hr')):
         """
         Args:
             folder_path (str): Path to folder containing image patches.
-            suffixes (tuple): Suffixes used in filenames for LR, SR, HR.
+            suffixes (tuple): Suffixes used in filenames for LR, HR.
         """
+
         self.folder_path = folder_path
-        self.lr_suffix, self.sr_suffix, self.hr_suffix = suffixes
+        self.suffix_list = suffixes if not isinstance(suffixes, str) else [suffixes]
 
         # Gather all _lr.tif files and derive basename (e.g., 0001_0001)
-        self.lr_files = sorted(glob.glob(os.path.join(folder_path, f'*_{self.lr_suffix}.tif')))
-        self.patch_ids = [os.path.basename(f).replace(f'_{self.lr_suffix}.tif', '') for f in self.lr_files]
+        self.file_list = sorted(glob.glob(os.path.join(folder_path, f'*_{self.suffix_list[0]}.tif')))
+        self.patch_ids = [os.path.basename(f).replace(f'_{self.suffix_list[0]}.tif', '') for f in self.file_list]
 
     def __len__(self):
         return len(self.patch_ids)
@@ -24,23 +25,26 @@ class SRDataset(Dataset):
     def __getitem__(self, idx):
         patch_id = self.patch_ids[idx]
         
-        lr_path = os.path.join(self.folder_path, f'{patch_id}_{self.lr_suffix}.tif')
-        assert lr_path == self.lr_files[idx]
-        
-        with rasterio.open(lr_path) as src:
-            lr = torch.from_numpy(src.read())
+        if len(self.suffix_list) == 1: 
+            img_path = os.path.join(self.folder_path, f'{patch_id}_{self.suffix_list[0]}.tif')
 
-        sr_path = os.path.join(self.folder_path, f'{patch_id}_{self.sr_suffix}.tif')
-        with rasterio.open(sr_path) as src:
-            sr = torch.from_numpy(src.read())
+            with rasterio.open(lr_path) as src:
+                img = torch.from_numpy(src.read())
+            
+            return {
+                    'name': patch_id,
+                    'img': img
+                }
+        else:
+            result_dict = {"name": patch_id}
 
-        hr_path = os.path.join(self.folder_path, f'{patch_id}_{self.hr_suffix}.tif')
-        with rasterio.open(hr_path) as src:
-            hr = torch.from_numpy(src.read())
+            for suffix in self.suffix_list: 
 
-        return {
-            'name': patch_id,
-            'lr': lr,
-            'sr': sr,
-            'hr': hr
-        }
+                img_path = os.path.join(self.folder_path, f'{patch_id}_{suffix}.tif')
+
+                with rasterio.open(lr_path) as src:
+                    result_dict["suffix"] = torch.from_numpy(src.read())
+
+            return result_dict
+
+            
