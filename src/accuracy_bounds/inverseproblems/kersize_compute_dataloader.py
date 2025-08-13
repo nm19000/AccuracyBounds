@@ -1,10 +1,6 @@
-import numpy as np
-#from utils import projection_nullspace_operator
 import torch
-from scipy.sparse import csr_matrix, lil_matrix
 from joblib import Parallel, delayed
-from pdb import set_trace
-
+import numpy as np
 
 def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
     """
@@ -24,9 +20,9 @@ def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
     feas_set_y = []
 
     for x_n in target_data:
-        e_n = input_data_point - np.dot(A,x_n) # Compute noise vector
+        e_n = input_data_point - torch.dot(A,x_n) # Compute noise vector
 
-        if np.linalg.norm(e_n,p) <= epsilon:  # Check if noise is below noiselevel
+        if torch.linalg.norm(e_n,p) <= epsilon:  # Check if noise is below noiselevel
             # add traget data point x_n to feasible set
             feas_set_y.append(x_n)
 
@@ -64,7 +60,7 @@ def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
         for j in range(0,h+1,1):
             #compute vectors in null space of F and their norm
             dist_ns = feas_set_y[h]-feas_set_y[j]
-            diameter= np.linalg.norm(dist_ns, ord = p)
+            diameter= torch.linalg.norm(dist_ns, ord = p)
 
             #add to diam_y 
             diam_y.append(diameter)
@@ -77,7 +73,7 @@ def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
     # and divided by num_feas^2 ad we have that many terms
     if num_feas > 0:      
         # compute 2 times sum over diams to the power p divided by num_feas^2
-        diameter_mean_y = 2*np.divide(np.sum(np.power(diam_y,p)), np.power(num_feas,2))
+        diameter_mean_y = 2*torch.divide(torch.sum(torch.power(diam_y,p)), torch.power(num_feas,2))
     elif num_feas==0:
         diameter_mean_y = 0  
 
@@ -103,7 +99,7 @@ def diams_feasibleset_inv_sym(A, input_data_point, target_data, p, epsilon):
                                         consisting of all possible target data points, for one input point.
     """
     # Compute Moore-Penrose-Inverse of F
-    F = np.hstack((A, np.eye(A.shape[0])))  # Construct F: (A | I) 
+    F = torch.hstack((A, torch.eye(A.shape[0])))  # Construct F: (A | I) 
     proj_ns_F = projection_nullspace_operator(F)
 
     # Step 2: Compute feasible sets and diameters
@@ -113,14 +109,14 @@ def diams_feasibleset_inv_sym(A, input_data_point, target_data, p, epsilon):
 
     for x_n in target_data:
         xcomp = len(x_n)-1
-        e_n = input_data_point - np.dot(A,x_n) # Compute noise vector
+        e_n = input_data_point - torch.dot(A,x_n) # Compute noise vector
 
-        if np.linalg.norm(e_n,p) <= epsilon:  # Check if noise is below noiselevel
+        if torch.linalg.norm(e_n,p) <= epsilon:  # Check if noise is below noiselevel
             # Project onto the null space of F
-            proj_nullspace = np.dot(proj_ns_F, np.hstack((x_n, e_n)))[0:xcomp] # Project (x_n, e_n) onto nullspace of F, only take dim of x_n
+            proj_nullspace = torch.dot(proj_ns_F, torch.hstack((x_n, e_n)))[0:xcomp] # Project (x_n, e_n) onto nullspace of F, only take dim of x_n
 
             # Compute diameter of feasible set based on projection onto null space
-            diameter = 2 * np.linalg.norm(proj_nullspace, ord = p)   
+            diameter = 2 * torch.linalg.norm(proj_nullspace, ord = p)   
 
             #add to diam_y 
             diam_y.append(diameter)
@@ -133,7 +129,7 @@ def diams_feasibleset_inv_sym(A, input_data_point, target_data, p, epsilon):
     num_feas = len(diam_y)        
     # get mean over diams 
     if num_feas > 0:      
-        diameter_mean_y = np.mean(np.power(diam_y,p))
+        diameter_mean_y = torch.mean(torch.power(diam_y,p))
 
     return diameter_mean_y, num_feas, max_diam_Fy
 
@@ -186,9 +182,9 @@ def av_kernelsize(A, input_data, target_data, p, epsilon):
         av_kersizep = av_kersizep + diameter_mean_y
         
     # get mean over input data
-    av_kersize = np.divide(av_kersizep, num_samples)    
+    av_kersize = torch.divide(av_kersizep, num_samples)    
     # take power 1/p to obtain average kersize
-    av_kersize =  np.power(av_kersize, 1/p)
+    av_kersize =  torch.power(av_kersize, 1/p)
     
     return av_kersize
 
@@ -237,7 +233,7 @@ def wc_kernelsize_sym_perbatch_cuda(A, F_null, input_data, target_data, p_X, p_Y
 
     if F_null is None:
         # Compute Moore-Penrose-Inverse of F
-        F = np.hstack((A, np.eye(A.shape[0])))  # Construct F: (A | I) 
+        F = torch.hstack((A, torch.eye(A.shape[0])))  # Construct F: (A | I) 
         F_null = projection_nullspace_operator(F)  # to replace by the one in my class
 
 
@@ -294,7 +290,7 @@ def wc_kernelsize_sym_batch_cuda(A, F_null, input_data, target_data, p_X, p_Y, e
     '''
     if F_null is None:
         # Compute Moore-Penrose-Inverse of F
-        F = np.hstack((A, np.eye(A.shape[0])))  # Construct F: (A | I) 
+        F = torch.hstack((A, torch.eye(A.shape[0])))  # Construct F: (A | I) 
         F_null = projection_nullspace_operator(F)  # to replace by the one in my class
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -362,15 +358,52 @@ We distinguish 2 kind of samplings :
 '''
 
 
-def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data, forwarded_target, p_X, p_Y, epsilon, batch_size):
+def insert_no_overlap_keep_A(A_coo, B_csr):
+    A = A_coo.coalesce()
+    B = B_csr.to_sparse_coo()
+    I_A, V_A = A.indices(), A.values()
+    I_B, V_B = B.indices(), B.values()
+    # linearize indices to detect overlaps
+    lin_A = I_A[0] * A.shape[1] + I_A[1]
+    lin_B = I_B[0] * A.shape[1] + I_B[1]
+    # keep only B entries not in A
+    mask = ~torch.isin(lin_B, lin_A)
+    I = torch.cat([I_A, I_B[:, mask]], dim=1)
+    V = torch.cat([V_A, V_B[mask]], dim=0)
+    return torch.sparse_coo_tensor(I, V, A.shape, device=A.device, dtype=A.dtype)
+
+def sparse_block(A, i0, i1, j0, j1, out_layout="coo"):
+    """
+    Return A[i0:i1, j0:j1] as a sparse tensor without densifying.
+    Works for A in COO or CSR. out_layout: 'coo' or 'csr'
+    """
+    Acoo = A.to_sparse_coo().coalesce()
+    r, c = Acoo.indices()
+    v     = Acoo.values()
+
+    m = (r >= i0) & (r < i1) & (c >= j0) & (c < j1)
+    r2 = r[m] - i0
+    c2 = c[m] - j0
+    v2 = v[m]
+
+    B = torch.sparse_coo_tensor(
+        torch.stack([r2, c2], dim=0),
+        v2,
+        (i1 - i0, j1 - j0),
+        device=A.device, dtype=A.dtype
+    ).coalesce()
+
+    return B if out_layout == "coo" else B.to_sparse_csr()
+
+def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, target_data2, forwarded_target, p_X, p_Y, epsilon):
     """
     Computes pairwise distances between target samples (in X), considering only those pairs that belong to the same feasible set F_y.
     Splits data into batches for efficient computation and constructs a matrix indicating which x belongs to which F_y.
 
     Args:
-        input_data (np.ndarray): Input data samples (y).
-        target_data (np.ndarray): Target data samples (x).
-        forwarded_target (np.ndarray): Forwarded target data (F(x,e)).
+        input_data (torch.ndarray): Input data samples (y).
+        target_data (torch.ndarray): Target data samples (x).
+        forwarded_target (torch.ndarray): Forwarded target data (F(x,e)).
         p_X (int or float): Norm degree for target distance (X) computation.
         p_Y (int or float): Norm degree for feasibility computation.
         epsilon (float): Noise level in the model.
@@ -383,15 +416,24 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data, forwar
 
 
     n_batches_input = len(input_data.dataset)
-    n_batches_target = len(target_data.dataset)
+    n_batches_target = len(forwarded_target.dataset)
 
-    feasible_appartenance = lil_matrix((m, n), dtype=np.float32)
 
-    for target_batch_id, target_batch in enumerate(target_data):
+    for target_batch_id, target_batch in enumerate(forwarded_target):
 
         for input_batch_id, input_batch in enumerate(input_data):
+            print(f"Target Batch: [{target_batch_id+1} / {len(forwarded_target)}],     Input Batch: [{input_batch_id+1} / {len(input_data)}]                    ", end="\r")
+            if input_batch_id == 0 and target_batch_id == 0: 
+                n = len(input_batch["img"]) * n_batches_input # TODO: what if batchsize is not always the same? e.g. drop_last = False
+                m = len(target_batch["img"]) * n_batches_target #  TODO: what if batchsize is not always the same? e.g. drop_last = False
+
+                feasible_appartenance = torch.sparse_coo_tensor(
+                                                indices=torch.empty((2, 0), dtype=torch.long),  # no nonzero entries yet
+                                                values=torch.tensor([], dtype=torch.float32),
+                                                size=(n, m))
+                
             feasible_small = feasibleApp_samplingYX_batch_cuda(A, input_batch["img"], target_batch["img"], p_Y, epsilon)
-            feasible_small = csr_matrix(feasible_small)
+            feasible_small = feasible_small.to_sparse_csr()
 
             batch_size_target = target_batch["img"].shape[0]
             batch_size_input = input_batch["img"].shape[0]
@@ -403,78 +445,116 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data, forwar
             idx_jmin = batch_size_input * input_batch_id
             idx_jmax = batch_size_input * (input_batch_id + 1)
 
+            feasible_appartenance = insert_no_overlap_keep_A(feasible_appartenance, feasible_small.detach().cpu())
 
-            feasible_appartenance[idx_imin:idx_imax, idx_jmin:idx_jmax] = feasible_small
-
-    feasible_appartenance = feasible_appartenance.tocsr()
-
-    
     #print(feasible_appartenance.data.nbytes/(1024*1024), f'size data {feasible_appartenance.shape}') 
-    
-    common_feasible = feasible_appartenance@(feasible_appartenance.T)
+    feasible_appartenance = feasible_appartenance.to_sparse_csr()
 
-    distsXX = lil_matrix((m, m), dtype=np.float32)
-    
-    # TODO: Why iterate this a second time? Why not computed in first loop as well? 
-    for i in range(n_batches_target):
-        idx_imin = i*batch_size
-        idx_imax = idx_imin+ batch_size
+    common_feasible = feasible_appartenance@(feasible_appartenance.transpose(0, 1))
 
-        for j in range(n_batches_target):
-            idx_jmin = j*batch_size
-            idx_jmax = idx_jmin + batch_size
+    distsXX = torch.sparse_coo_tensor(
+        indices=torch.empty((2, 0), dtype=torch.long),  # no nonzero entries yet
+        values=torch.tensor([], dtype=torch.float32),
+        size=(m, m)
+    )    
 
+    for target_batch_id1, target_batch1 in enumerate(target_data1):
 
-            dists_small = np.array(distsXX_samplingYX_batch_cuda(A, target_data[idx_imin:idx_imax], target_data[idx_jmin:idx_jmax], p_X))
+        for target_batch_id2, target_batch2 in enumerate(target_data2):
+            print(f"Target Batch1: [{target_batch_id1+1} / {len(target_data1)}],     Target Batch2: [{target_batch_id2+1} / {len(target_data2)}]                    ", end="\r")
+
+            idx_imin = batch_size_target * target_batch_id1
+            idx_imax = batch_size_target * (target_batch_id1 + 1)
+
+            idx_jmin = batch_size_target * target_batch_id2
+            idx_jmax = batch_size_target * (target_batch_id2 + 1)
+
+            dists_small = distsXX_samplingYX_batch_cuda(A, target_batch1["img"], target_batch2["img"], p_X)
             
-            common_feasible_small = common_feasible[idx_imin:idx_imax, idx_jmin:idx_jmax].toarray()
+            common_feasible_small = sparse_block(common_feasible, idx_imin, idx_imax, idx_jmin, idx_jmax, out_layout="coo").to_dense()            
             mask = common_feasible_small != 0
 
             dists_small[~mask] = 0
-            dists_small = csr_matrix(dists_small)
 
-            distsXX[idx_imin:idx_imax, idx_jmin:idx_jmax] = dists_small
+            i0, i1 = idx_imin, idx_imax
+            j0, j1 = idx_jmin, idx_jmax
+            H, W = i1 - i0, j1 - j0
+
+            dists_small = offset_csr_block(dists_small.to_sparse_csr(), i0, j0, (n, m))
+            distsXX = insert_no_overlap_keep_A(distsXX, dists_small)
 
     return distsXX, feasible_appartenance
 
+def offset_csr_block(local_csr: torch.Tensor, i0: int, j0: int, global_shape):
+    """
+    Place a CSR 'local_csr' block at (row=i0, col=j0) inside a larger CSR tensor of shape 'global_shape'.
+
+    local_csr: torch.sparse_csr_tensor of shape (h, w)
+    i0, j0:    top-left offsets (rows, cols) in the global matrix
+    global_shape: (H, W)
+    returns: torch.sparse_csr_tensor of shape (H, W)
+    """
+    assert local_csr.layout == torch.sparse_csr, "local_csr must be CSR"
+    H, W = global_shape
+    h, w = local_csr.shape
+    if not (0 <= i0 <= H - h):
+        raise ValueError(f"Row offset i0={i0} with block height {h} exceeds H={H}")
+    if not (0 <= j0 <= W - w):
+        raise ValueError(f"Col offset j0={j0} with block width {w} exceeds W={W}")
+
+    crow = local_csr.crow_indices()
+    col  = local_csr.col_indices()
+    val  = local_csr.values()
+
+    # shift columns
+    col_off = col + j0
+
+    nnz = val.numel()
+    device = local_csr.device
+    itype  = crow.dtype
+
+    # Build global crow: zeros up to i0, then local crow, then constant nnz afterwards
+    crow_g = torch.empty(H + 1, dtype=itype, device=device)
+    if i0 > 0:
+        crow_g[:i0] = 0
+    crow_g[i0:i0 + h + 1] = crow
+    if i0 + h < H:
+        crow_g[i0 + h + 1:] = nnz
+
+    return torch.sparse_csr_tensor(crow_g, col_off, val, size=global_shape,
+                                   device=device, dtype=local_csr.dtype)
+
+# TODO: Why is A needed here? 
 def distsXX_samplingYX_batch_cuda(A, target_data1, target_data2 , p_X):
     """
     Computes pairwise distances between two batches of target data (x) using the specified norm.
 
     Args:
-        target_data1 (np.ndarray): First batch of target data.
-        target_data2 (np.ndarray): Second batch of target data.
+        target_data1 (torch.ndarray): First batch of target data.
+        target_data2 (torch.ndarray): Second batch of target data.
         p_X (int or float): Norm degree for distance computation.
 
     Returns:
         torch.Tensor: Matrix of pairwise distances between target_data1 and target_data2.
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    x1 = torch.tensor(target_data1, dtype = torch.float32,device = device )
-    x2 = torch.tensor(target_data2, dtype = torch.float32,device = device )
-
-    n1 = x1.shape[0]
-    n2 = x2.shape[0]
-
-    x1_flat = torch.tensor(x1.reshape(n1, -1), device = device)
-    x2_flat = torch.tensor(x2.reshape(n2, -1), device = device)
+    x1_flat = target_data1.flatten(start_dim=1)
+    x2_flat = target_data2.flatten(start_dim=1)
 
     distancesXX = torch.norm(x1_flat[:,None, :]-x2_flat[None,:,:], p = p_X, dim = -1) 
     return distancesXX
 
-def feasibleApp_samplingYX_batch_cuda(A, input_data,forwarded_target, p_Y, epsilon):
+def feasibleApp_samplingYX_batch_cuda(A, input_data, forwarded_target, p_Y, epsilon):
     """
     Determines which target samples belong to the feasible set of each input data sample.
 
     Args:
-        input_data (np.ndarray): Batch of input samples (y).
-        forwarded_target (np.ndarray): Batch of forwarded target samples (F(x,e)).
+        input_data (torch.ndarray): Batch of input samples (y).
+        forwarded_target (torch.ndarray): Batch of forwarded target samples (F(x,e)).
         p_Y (int or float): Norm degree for feasibility computation.
         epsilon (float): Feasibility threshold.
 
     Returns:
-        np.ndarray: Boolean matrix indicating feasibility (shape: [forwarded_target, input_data]).
+        torch.ndarray: Boolean matrix indicating feasibility (shape: [forwarded_target, input_data]).
     """
    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -488,7 +568,7 @@ def feasibleApp_samplingYX_batch_cuda(A, input_data,forwarded_target, p_Y, epsil
 
     e_diff = -forwarded_flat[:,None, :] + input_data_flat[None,:,:]
 
-    feasible_appartenance = np.asarray(torch.norm(e_diff,p = p_Y, dim = -1)<epsilon)
+    feasible_appartenance = torch.norm(e_diff,p = p_Y, dim = -1)<epsilon
 
     return feasible_appartenance # feasible appartenance is y vs x
 
@@ -498,7 +578,7 @@ def kersize_samplingYX(distsXX, feasible_appartenance,p_X):
 
     Args:
         distsXX (scipy.sparse matrix): Pairwise distance matrix between target samples.
-        feasible_appartenance (np.ndarray or sparse matrix): Feasibility matrix.
+        feasible_appartenance (torch.ndarray or sparse matrix): Feasibility matrix.
         p_X (int or float): Norm degree for distance computation.
 
     Returns:
@@ -521,7 +601,7 @@ def kersize_samplingYX(distsXX, feasible_appartenance,p_X):
     
 
     n,p = feasible_appartenance.shape
-    #distsXX = np.asarray(distsXX.to_dense())
+    #distsXX = torch.asarray(distsXX.to_dense())
 
     results = Parallel(n_jobs=-1)(delayed(compute_max_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in range(p))
     
@@ -534,7 +614,7 @@ def avgLB_samplingYX(distsXX, feasible_appartenance, p_X):
 
     Args:
         distsXX (scipy.sparse matrix): Pairwise distance matrix between target samples (x).
-        feasible_appartenance (np.ndarray or sparse matrix): Feasibility matrix.
+        feasible_appartenance (torch.ndarray or sparse matrix): Feasibility matrix.
         p_X (int or float): Norm degree for distance computation.
 
     Returns:
@@ -567,7 +647,7 @@ def avgkersize_samplingYX(distsXX, feasible_appartenance, p_X):
 
     Args:
         distsXX (scipy.sparse matrix): Pairwise distance matrix between target samples.
-        feasible_appartenance (np.ndarray or sparse matrix): Feasibility matrix.
+        feasible_appartenance (torch.ndarray or sparse matrix): Feasibility matrix.
         p_X (int or float): Norm degree for distance computation.
 
     Returns:
@@ -602,14 +682,14 @@ def target_distances_samplingX_batch_cuda(A,input_data, target_data, p_X, p_Y, e
     Computes pairwise distances between target samples, masking out pairs whose corresponding inputs are not in some common feasible set.
 
     Args:
-        input_data (np.ndarray): Input data samples.
-        target_data (np.ndarray): Target data samples.
+        input_data (torch.ndarray): Input data samples.
+        target_data (torch.ndarray): Target data samples.
         p_X (int or float): Norm degree for target distance computation.
         p_Y (int or float): Norm degree for feasibility computation.
         epsilon (float): Feasibility threshold.
 
     Returns:
-        np.ndarray: Masked pairwise distance matrix for target samples.
+        torch.ndarray: Masked pairwise distance matrix for target samples.
         torch.Tensor: Boolean matrix indicating feasibility between input samples.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -649,7 +729,7 @@ def target_distances_samplingX_crossbatch_cuda(A, batch1, batch2, p_X, p_Y, epsi
         epsilon (float): Feasibility threshold.
 
     Returns:
-        np.ndarray: Masked pairwise distance matrix for target samples.
+        torch.ndarray: Masked pairwise distance matrix for target samples.
         torch.Tensor: Boolean matrix indicating feasibility between input samples.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -688,22 +768,22 @@ def target_distances_samplingX_perbatch_cuda(A, input_data, target_data, p_X, p_
     Computes pairwise distances between target samples in batches, masking out pairs whose corresponding inputs are not in common feasible sets.
 
     Args:
-        input_data (np.ndarray): Input data samples.
-        target_data (np.ndarray): Target data samples.
+        input_data (torch.ndarray): Input data samples.
+        target_data (torch.ndarray): Target data samples.
         p_X (int or float): Norm degree for target distance computation.
         p_Y (int or float): Norm degree for feasibility computation.
         epsilon (float): Feasibility threshold.
         batch_size (int): Size of each batch for computation.
 
     Returns:
-        np.ndarray: Masked pairwise distance matrix for target samples.
-        np.ndarray: Boolean matrix indicating feasibility between input samples.
+        torch.ndarray: Masked pairwise distance matrix for target samples.
+        torch.ndarray: Boolean matrix indicating feasibility between input samples.
     """
     n = target_data.shape[0]
     n_batches = (n//batch_size)
 
-    masked_target_dists = np.zeros((n,n))
-    same_feasible = np.zeros((n,n))
+    masked_target_dists = torch.zeros((n,n))
+    same_feasible = torch.zeros((n,n))
 
     for i in range(n_batches):
         idx_imin = i*batch_size
@@ -734,7 +814,7 @@ def kersize_samplingX(masked_target_dists):
     Computes the kernelsize.
 
     Args:
-        masked_target_dists (np.ndarray): Masked pairwise distance matrix for target samples.
+        masked_target_dists (torch.ndarray): Masked pairwise distance matrix for target samples.
 
     Returns:
         float: Kersize.

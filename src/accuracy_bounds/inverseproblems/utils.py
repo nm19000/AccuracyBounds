@@ -3,7 +3,62 @@ from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 from scipy.sparse import coo_matrix, csc_matrix
 from scipy.sparse.linalg import svds
+import torch
+import scipy.sparse as sp
+import numpy as np
 
+def torch_csr_to_scipy(A: torch.Tensor) -> sp.csr_matrix:
+    assert A.layout == torch.sparse_csr, f"A must be sparse_csr {type(A.layout)}"
+    m, n = A.shape
+    indptr = A.crow_indices().detach().cpu().numpy()   # length m+1
+    indices = A.col_indices().detach().cpu().numpy()   # length nnz
+    data = A.values().detach().cpu().numpy()           # length nnz
+
+    # (optional) SciPy prefers int32 for indices
+    if indices.dtype != np.int32: indices = indices.astype(np.int32, copy=False)
+    if indptr.dtype  != np.int32: indptr  = indptr.astype(np.int32,  copy=False)
+
+    return sp.csr_matrix((data, indices, indptr), shape=(m, n))
+
+def torch_coo_to_scipy(A: torch.Tensor, to='csr'):
+    A = A.to_sparse_coo().coalesce()
+    m, n = A.shape
+    ij = A.indices().detach().cpu().numpy()            # shape [2, nnz]
+    data = A.values().detach().cpu().numpy()
+    row, col = ij[0], ij[1]
+    M = sp.coo_matrix((data, (row, col)), shape=(m, n))
+    return M.tocsr() if to == 'csr' else M
+
+def torch_sparse_to_scipy_csr(A: torch.Tensor) -> sp.csr_matrix:
+    """
+    Convert a PyTorch tensor (CSR/COO/dense) to SciPy csr_matrix.
+    - No densifying for sparse inputs.
+    - Handles CUDA tensors by moving index/data arrays to CPU.
+    """
+    m, n = A.shape
+
+    # Dense (strided) tensor
+    if A.layout == torch.strided:
+        return sp.csr_matrix(A.detach().cpu().numpy())
+
+    # Try CSR fast-path
+    try:
+        indptr  = A.crow_indices()   # only valid for CSR
+        indices = A.col_indices()
+        data    = A.values()
+    except (AttributeError, RuntimeError):
+        # Not CSR → go through COO safely
+        Acoo = A.to_sparse_coo().coalesce()
+        ij   = Acoo.indices().detach().cpu().numpy()  # [2, nnz]
+        row, col = ij[0].astype(np.int32, copy=False), ij[1].astype(np.int32, copy=False)
+        dat  = Acoo.values().detach().cpu().numpy()
+        return sp.coo_matrix((dat, (row, col)), shape=(m, n)).tocsr()
+    else:
+        # CSR build (ensure int32 indices for SciPy)
+        indptr_np  = indptr.detach().cpu().numpy().astype(np.int32, copy=False)
+        indices_np = indices.detach().cpu().numpy().astype(np.int32, copy=False)
+        data_np    = data.detach().cpu().numpy()
+        return sp.csr_matrix((data_np, indices_np, indptr_np), shape=(m, n))
 
 #To calculate operators in the form of matrices (suits better to big operators)
 class MatrixOpCalculator:
