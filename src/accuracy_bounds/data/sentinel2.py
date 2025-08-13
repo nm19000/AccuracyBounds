@@ -28,7 +28,7 @@ class SRDataset(Dataset):
         if len(self.suffix_list) == 1: 
             img_path = os.path.join(self.folder_path, f'{patch_id}_{self.suffix_list[0]}.tif')
 
-            with rasterio.open(lr_path) as src:
+            with rasterio.open(img_path) as src:
                 img = torch.from_numpy(src.read())
             
             return {
@@ -42,7 +42,7 @@ class SRDataset(Dataset):
 
                 img_path = os.path.join(self.folder_path, f'{patch_id}_{suffix}.tif')
 
-                with rasterio.open(lr_path) as src:
+                with rasterio.open(img_path) as src:
                     result_dict[suffix] = torch.from_numpy(src.read())
 
             return result_dict
