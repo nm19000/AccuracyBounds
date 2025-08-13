@@ -1,6 +1,7 @@
 import torch
 from joblib import Parallel, delayed
 import numpy as np
+from tqdm import tqdm
 
 def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
     """
@@ -415,22 +416,19 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, targe
     """
 
 
-    n_batches_input = len(input_data.dataset)
-    n_batches_target = len(forwarded_target.dataset)
+    n_input = len(input_data.dataset)
+    n_target = len(forwarded_target.dataset)
+
+    feasible_appartenance = torch.sparse_coo_tensor(indices=torch.empty((2, 0), dtype=torch.long),  # no nonzero entries yet
+                            values=torch.tensor([], dtype=torch.float32),
+                            size=(n_target, n_input))
+    
 
 
     for target_batch_id, target_batch in enumerate(forwarded_target):
 
         for input_batch_id, input_batch in enumerate(input_data):
             print(f"Target Batch: [{target_batch_id+1} / {len(forwarded_target)}],     Input Batch: [{input_batch_id+1} / {len(input_data)}]                    ", end="\r")
-            if input_batch_id == 0 and target_batch_id == 0: 
-                n = len(input_batch["img"]) * n_batches_input # TODO: what if batchsize is not always the same? e.g. drop_last = False
-                m = len(target_batch["img"]) * n_batches_target #  TODO: what if batchsize is not always the same? e.g. drop_last = False
-
-                feasible_appartenance = torch.sparse_coo_tensor(
-                                                indices=torch.empty((2, 0), dtype=torch.long),  # no nonzero entries yet
-                                                values=torch.tensor([], dtype=torch.float32),
-                                                size=(n, m))
                 
             feasible_small = feasibleApp_samplingYX_batch_cuda(A, input_batch["img"], target_batch["img"], p_Y, epsilon)
             feasible_small = feasible_small.to_sparse_csr()
@@ -445,6 +443,11 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, targe
             idx_jmin = batch_size_input * input_batch_id
             idx_jmax = batch_size_input * (input_batch_id + 1)
 
+            i0, i1 = idx_imin, idx_imax
+            j0, j1 = idx_jmin, idx_jmax
+
+            feasible_small = offset_csr_block(feasible_small.to_sparse_csr(), i0, j0, (n_target, n_target))
+
             feasible_appartenance = insert_no_overlap_keep_A(feasible_appartenance, feasible_small.detach().cpu())
 
     #print(feasible_appartenance.data.nbytes/(1024*1024), f'size data {feasible_appartenance.shape}') 
@@ -455,7 +458,7 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, targe
     distsXX = torch.sparse_coo_tensor(
         indices=torch.empty((2, 0), dtype=torch.long),  # no nonzero entries yet
         values=torch.tensor([], dtype=torch.float32),
-        size=(m, m)
+        size=(n_target, n_target)
     )    
 
     for target_batch_id1, target_batch1 in enumerate(target_data1):
@@ -480,7 +483,7 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, targe
             j0, j1 = idx_jmin, idx_jmax
             H, W = i1 - i0, j1 - j0
 
-            dists_small = offset_csr_block(dists_small.to_sparse_csr(), i0, j0, (n, m))
+            dists_small = offset_csr_block(dists_small.to_sparse_csr(), i0, j0, (n_target, n_target))
             distsXX = insert_no_overlap_keep_A(distsXX, dists_small)
 
     return distsXX, feasible_appartenance
@@ -603,7 +606,7 @@ def kersize_samplingYX(distsXX, feasible_appartenance,p_X):
     n,p = feasible_appartenance.shape
     #distsXX = torch.asarray(distsXX.to_dense())
 
-    results = Parallel(n_jobs=-1)(delayed(compute_max_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in range(p))
+    results = Parallel(n_jobs=-1)(delayed(compute_max_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p)))
     
 
     return np.nanmax(np.array(list(results)))
@@ -637,7 +640,7 @@ def avgLB_samplingYX(distsXX, feasible_appartenance, p_X):
 
 
     n,p = feasible_appartenance.shape
-    results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in range(p))
+    results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p)))
 
     return np.nanmean(np.asarray(list(results)))/(2**p_X)
 
@@ -670,7 +673,7 @@ def avgkersize_samplingYX(distsXX, feasible_appartenance, p_X):
 
 
     n,p = feasible_appartenance.shape
-    results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in range(p))
+    results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p)))
 
  
     return np.nanmean(np.asarray(results))**(1/p_X)
