@@ -19,14 +19,7 @@ patchsize_X = 12
 patchsize_Y = patchsize_X//4
 
 
-distY_jsonpath = os.path.join('/localhome/iaga_dv/Dokumente/sat_data/cross_processed/naip', 'distY_distr.json')
-# Load the distribution data from the JSON file
-with open(distY_jsonpath, 'r') as f:
-    distY_distr = json.load(f)
-
-mu0, sigma0 = torch.tensor(distY_distr['naip']['mean']), torch.tensor(distY_distr['naip']['sigma'])
-noise_level = mu0 + 2*sigma0
-noise_level = 2000
+noise_level = 4000
 print(f'Noise level = {noise_level}')
 print()
 
@@ -44,16 +37,21 @@ print("    target_data:2          ", len(target_data2))
 print("    forwarded_target_data:", len(forwarded_target_data))
 
 
-input_loader = DataLoader(input_data, batch_size=batch_size, num_workers=batch_size, drop_last=True)
-target_loader1 = DataLoader(target_data1, batch_size=batch_size, num_workers=batch_size, drop_last=True)
-target_loader2 = DataLoader(target_data2, batch_size=batch_size, num_workers=batch_size, drop_last=True)
-forwarded_target_loader = DataLoader(forwarded_target_data, batch_size=batch_size, num_workers=batch_size, drop_last=True)
+input_loader = DataLoader(input_data, batch_size=batch_size, num_workers=batch_size, drop_last=True, shuffle=False) # shuffle = False is important to keep the right order in the feasibility matrices
+target_loader1 = DataLoader(target_data1, batch_size=batch_size, num_workers=batch_size, drop_last=True, shuffle=False)
+target_loader2 = DataLoader(target_data2, batch_size=batch_size, num_workers=batch_size, drop_last=True, shuffle=False)
+forwarded_target_loader = DataLoader(forwarded_target_data, batch_size=batch_size, num_workers=batch_size, drop_last=True,shuffle=False)
 
 print("Prepared DataLoaders")
 print("    input_loader:           ", len(input_loader), "batches with size", batch_size)
 print("    target_loader1:          ", len(target_loader1), "batches with size", batch_size)
 print("    target_loader2:          ", len(target_loader2), "batches with size", batch_size)
 print("    forwarded_target_loader:", len(forwarded_target_loader), "batches with size", batch_size)
+
+from matplotlib import pyplot as plt
+image = target_data1.get_full_img('naip', '0', 'hr_res')
+plt.imshow(image.permute(1,2,0)/3000)
+plt.show()
 
 
 
