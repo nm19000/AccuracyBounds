@@ -14,7 +14,7 @@ import json
 
 
 data_path = "/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc_test"
-batch_size = 200
+batch_size = 1500
 patchsize_X = 12
 patchsize_Y = patchsize_X//4
 
@@ -36,11 +36,15 @@ print("    target_data1:          ", len(target_data1))
 print("    target_data:2          ", len(target_data2))
 print("    forwarded_target_data:", len(forwarded_target_data))
 
+import multiprocessing
+# Logical cores (includes hyperthreading)
+logical_cores = multiprocessing.cpu_count()
+print(f"Logical CPU cores: {logical_cores}")
 
-input_loader = DataLoader(input_data, batch_size=batch_size, num_workers=batch_size, drop_last=True, shuffle=False) # shuffle = False is important to keep the right order in the feasibility matrices
-target_loader1 = DataLoader(target_data1, batch_size=batch_size, num_workers=batch_size, drop_last=True, shuffle=False)
-target_loader2 = DataLoader(target_data2, batch_size=batch_size, num_workers=batch_size, drop_last=True, shuffle=False)
-forwarded_target_loader = DataLoader(forwarded_target_data, batch_size=batch_size, num_workers=batch_size, drop_last=True,shuffle=False)
+input_loader = DataLoader(input_data, batch_size=batch_size, num_workers=logical_cores//2, drop_last=True, shuffle=False) # shuffle = False is important to keep the right order in the feasibility matrices
+target_loader1 = DataLoader(target_data1, batch_size=batch_size, num_workers=logical_cores//2, drop_last=True, shuffle=False)
+target_loader2 = DataLoader(target_data2, batch_size=batch_size, num_workers=logical_cores//2, drop_last=True, shuffle=False)
+forwarded_target_loader = DataLoader(forwarded_target_data, batch_size=batch_size, num_workers=logical_cores//2, drop_last=True,shuffle=False)
 
 print("Prepared DataLoaders")
 print("    input_loader:           ", len(input_loader), "batches with size", batch_size)
@@ -48,10 +52,7 @@ print("    target_loader1:          ", len(target_loader1), "batches with size",
 print("    target_loader2:          ", len(target_loader2), "batches with size", batch_size)
 print("    forwarded_target_loader:", len(forwarded_target_loader), "batches with size", batch_size)
 
-from matplotlib import pyplot as plt
-image = target_data1.get_full_img('naip', '0', 'hr_res')
-plt.imshow(image.permute(1,2,0)/3000)
-plt.show()
+
 
 
 

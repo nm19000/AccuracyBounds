@@ -2,6 +2,7 @@ import torch
 from joblib import Parallel, delayed
 import numpy as np
 from tqdm import tqdm
+import time
 
 def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
     """
@@ -424,7 +425,6 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, targe
                             size=(n_target, n_input))
     
 
-
     for target_batch_id, target_batch in enumerate(forwarded_target):
 
         for input_batch_id, input_batch in enumerate(input_data):
@@ -485,7 +485,6 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, targe
 
             dists_small = offset_csr_block(dists_small.to_sparse_csr(), i0, j0, (n_target, n_target))
             distsXX = insert_no_overlap_keep_A(distsXX, dists_small)
-
     return distsXX, feasible_appartenance
 
 def offset_csr_block(local_csr: torch.Tensor, i0: int, j0: int, global_shape):
@@ -543,7 +542,8 @@ def distsXX_samplingYX_batch_cuda(A, target_data1, target_data2 , p_X):
     x1_flat = target_data1.flatten(start_dim=1)
     x2_flat = target_data2.flatten(start_dim=1)
 
-    distancesXX = torch.norm(x1_flat[:,None, :]-x2_flat[None,:,:], p = p_X, dim = -1) 
+    distancesXX = torch.norm(x1_flat[:,None, :]-x2_flat[None,:,:], p = p_X, dim = -1)
+
     return distancesXX
 
 def feasibleApp_samplingYX_batch_cuda(A, input_data, forwarded_target, p_Y, epsilon):

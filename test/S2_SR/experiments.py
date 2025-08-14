@@ -8,6 +8,7 @@ from accuracy_bounds.inverseproblems.kersize_compute_dataloader import (target_d
     avgkersize_samplingYX)
 
 import os
+from scipy import sparse
 import json
 
 
@@ -37,7 +38,7 @@ if __name__ =='__main__':
 
     data_paths = {12:"/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc/PS12_res"}
 
-    batch_size = 200
+    batch_size = 1500
     patchsize_X = 12
     patchsize_Y = patchsize_X//4
 
@@ -47,10 +48,6 @@ if __name__ =='__main__':
 
 
 
-    distY_jsonpath = os.path.join('/localhome/iaga_dv/Dokumente/sat_data/cross_processed/naip', 'distY_distr.json')
-    # Load the distribution data from the JSON file
-    with open(distY_jsonpath, 'r') as f:
-        distY_distr = json.load(f)
 
     noise_level = noise_levels['global']
     print(f'Noise level = {noise_level}')
@@ -69,11 +66,14 @@ if __name__ =='__main__':
     print("    target_data:2          ", len(target_data2))
     print("    forwarded_target_data:", len(forwarded_target_data))
 
+    import multiprocessing
+    logical_cores = multiprocessing.cpu_count()
+    print(f"Logical CPU cores: {logical_cores}")
 
-    input_loader = DataLoader(input_data, batch_size=batch_size, num_workers=batch_size, drop_last=True, shuffle=False) # shuffle = False is important to keep the right order in the feasibility matrices
-    target_loader1 = DataLoader(target_data1, batch_size=batch_size, num_workers=batch_size, drop_last=True, shuffle=False)
-    target_loader2 = DataLoader(target_data2, batch_size=batch_size, num_workers=batch_size, drop_last=True, shuffle=False)
-    forwarded_target_loader = DataLoader(forwarded_target_data, batch_size=batch_size, num_workers=batch_size, drop_last=True,shuffle=False)
+    input_loader = DataLoader(input_data, batch_size=batch_size, num_workers=logical_cores//2, drop_last=True, shuffle=False) # shuffle = False is important to keep the right order in the feasibility matrices
+    target_loader1 = DataLoader(target_data1, batch_size=batch_size, num_workers=logical_cores//2, drop_last=True, shuffle=False)
+    target_loader2 = DataLoader(target_data2, batch_size=batch_size, num_workers=logical_cores//2, drop_last=True, shuffle=False)
+    forwarded_target_loader = DataLoader(forwarded_target_data, batch_size=batch_size, num_workers=logical_cores//2, drop_last=True,shuffle=False)
 
     print("Prepared DataLoaders")
     print("    input_loader:           ", len(input_loader), "batches with size", batch_size)
@@ -90,10 +90,24 @@ if __name__ =='__main__':
     feasible_appartenance = torch_csr_to_scipy(feasible_appartenance)
     distsXX = torch_sparse_to_scipy_csr(distsXX)
 
+
+
+    save_dir = data_path
+
+    feasible_path = os.path.join(save_dir, "feasible_appartenance.npz")
+    distsXX_path = os.path.join(save_dir, "distsXX.npz")
+
+    sparse.save_npz(feasible_path, feasible_appartenance)
+    sparse.save_npz(distsXX_path, distsXX)
+
+    print(f"Saved feasible_appartenance to {feasible_path}")
+    print(f"Saved distsXX to {distsXX_path}")
+
     if False:
         from matplotlib import pyplot as plt
         from pdb import set_trace
         import numpy as np
+
         feasible_viz = feasible_appartenance.toarray()
 
         nb_feasible = np.sum(feasible_viz, axis=0)

@@ -148,9 +148,21 @@ def apply_square_op_full(Op_mat, img, out_2D_shape_op, border = 4):
 
             jmin = j*(a-2*border)
             jmax = jmin + a
+
             if jmax<=w and imax<=h:
-                Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
-                OP_img[:,imin+border:imax-border,jmin+border: jmax-border ] = Apatch[:,border: -border, border:-border]
+                if i==0 and j ==0:
+                    Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                    OP_img[:,imin:imax-border,jmin: jmax-border ] = Apatch[:,: -border, :-border]
+                elif i==0 and j >0:
+                    Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                    OP_img[:,imin:imax-border,jmin+border: jmax-border ] = Apatch[:,: -border, border:-border]
+                elif i>0 and j==0:
+                    Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                    OP_img[:,imin+border:imax-border,jmin: jmax-border ] = Apatch[:,border: -border, :-border]
+                
+                else :
+                    Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                    OP_img[:,imin+border:imax-border,jmin+border: jmax-border ] = Apatch[:,border: -border, border:-border]
 
     # Do it for the last row, col
     for i in range(n_y):
@@ -178,6 +190,7 @@ def apply_square_op_full(Op_mat, img, out_2D_shape_op, border = 4):
     Apatch = apply_square_op_small(Op_mat, img[:,w-b:w, h-a:h], out_2Dshape=out_2D_shape_op)
     OP_img[:,w-b+border:w,h-a+border: h ] = Apatch[:,border: , border:]
     return OP_img
+
 
 def rescale_plot(img):
     minval = torch.min(img)
