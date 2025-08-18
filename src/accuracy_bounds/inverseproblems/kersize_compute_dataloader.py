@@ -3,6 +3,7 @@ from joblib import Parallel, delayed
 import numpy as np
 from tqdm import tqdm
 import time
+from torch.utils.data import DataLoader, SequentialSampler
 
 def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
     """
@@ -415,7 +416,12 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, targe
         distsXX (scipy.sparse.lil_matrix): Matrix of pairwise distances between feasible target samples.
         feasible_appartenance (scipy.sparse.csr_matrix): Feasibility matrix indicating which x belongs to which F_y.
     """
-
+    assert isinstance(input_data, DataLoader) and isinstance(target_data1, DataLoader) and isinstance(target_data2, DataLoader) , 'Data input is only supported as Dataloader'
+    #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
+    assert isinstance(input_data.sampler, SequentialSampler) and \
+           isinstance(target_data1.sampler, SequentialSampler) and \
+           isinstance(target_data2.sampler, SequentialSampler), \
+           'Dataloaders with Random samplers are not supported'
 
     n_input = len(input_data.dataset)
     n_target = len(forwarded_target.dataset)

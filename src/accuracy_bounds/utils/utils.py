@@ -76,7 +76,7 @@ def get_patches_from_S2(img,patchsize, border):
     all_patches = torch.stack(all_patches)
     return all_patches
 
-def build_S2_patched_dataset(patchsize_X,img_dset_folder , subdatasets , out_dsfolder, labels = ('hr_res', 'lr_res'), border_X = 28, SR_factor = 4):
+def build_S2_patched_dataset(patchsize_X,img_dset_folder , subdatasets , out_dsfolder, labels = ('hr_data', 'lr_data'), border_X = 0, SR_factor = 4):
     border_Y = border_X//SR_factor
     patchsize_Y = patchsize_X//SR_factor
 
