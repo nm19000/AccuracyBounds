@@ -8,7 +8,6 @@ from accuracy_bounds.inverseproblems.kersize_compute_dataloader import (target_d
     avgLB_samplingYX,
     avgkersize_samplingYX)
 
-from accuracy_bounds.utils.utils import build_S2_patched_dataset
 
 import os
 import json
@@ -19,6 +18,7 @@ import argparse
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="OpenSR Test Prediction Script")
+    parser.add_argument('--data_path',type = str ,help='The folder you store your data in')
     parser.add_argument('--save_folder',type = str ,help='Where do you want to save your feasibility appartenance and distsXX matrices to disk')
     parser.add_argument('--noise_level', type=int, default=4000, help='Noise level for the Kersize algorithm')
     parser.add_argument('--patch_size', type=int, default=12, help='Size of the patches to use for distance computation (default: 12)')
@@ -31,10 +31,10 @@ if __name__ == '__main__':
 
 
     #root_data_path = "/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc_test"
-    root_data_path = "/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc"
+    #root_data_path = "/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc"
 
 
-    data_paths = {ps: os.path.join(root_data_path, f'PS{ps}') for ps in [8,12,16,20]}
+    #data_paths = {ps: os.path.join(root_data_path, f'PS{ps}') for ps in [8,12,16,20]}
 
 
     batch_size = args.batch_size
@@ -42,20 +42,22 @@ if __name__ == '__main__':
     patchsize_Y = patchsize_X//4
     noise_level = args.noise_level
     results_fp = args.save_folder
+    data_path = args.data_path
 
-    data_path = data_paths[patchsize_X]
 
     print(f'Parameters : \n - Noise level = {noise_level} \n  -Patch size X : {patchsize_X} \n - Batch size : {batch_size}')
 
     print()
+    print(f'Save folder = {results_fp}')
+    print(f'Data path : {data_path}')
 
 
 
 
-    input_data = SRDataset(folder_path=data_path, suffixes=('lr_res'))
-    target_data1 = SRDataset(folder_path=data_path, suffixes=('hr_res'))
-    target_data2 = SRDataset(folder_path=data_path, suffixes=('hr_res'))
-    forwarded_target_data = SRDataset(folder_path=data_path, suffixes=('lr_res'))
+    input_data = SRDataset(folder_path=data_path, suffixes=('lr_data'))
+    target_data1 = SRDataset(folder_path=data_path, suffixes=('hr_data'))
+    target_data2 = SRDataset(folder_path=data_path, suffixes=('hr_data'))
+    forwarded_target_data = SRDataset(folder_path=data_path, suffixes=('lr_data'))
 
     print("Prepared Datasets")
     print("    input_data:           ", len(input_data))
@@ -120,15 +122,3 @@ if __name__ == '__main__':
 
         print(f'WC Kernelsize = {wc_kersize}')
         print(f'Avg. Kernelsize = {avg_kersize}')
-
-
-
-        patchsizesX = [8,12,16,20]
-        full_img_datapath = '/p/project1/hai_1013/sat_data/cross_processed'
-        subdatasets = ['naip', 'spot', 'spain_crops', 'spain_urban']
-
-        for PS_X in patchsizesX:
-            print(f'Creating patched dataset for a patchsize of {PS_X}')
-            build_S2_patched_dataset(patchsize_X = PS_X,img_dset_folder =  '/p/project1/hai_1013/sat_data/cross_processed', subdatasets  = subdatasets, out_dsfolder = f'/p/project1/hai_1013/sat_data/patched_crossproc/PS{PS_X}', labels = ('hr_data', 'lr_data'), border_X = 0, SR_factor = 4)
-            print('Done')
-

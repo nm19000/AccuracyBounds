@@ -581,7 +581,40 @@ def feasibleApp_samplingYX_batch_cuda(A, input_data, forwarded_target, p_Y, epsi
 
     return feasible_appartenance # feasible appartenance is y vs x
 
-def kersize_samplingYX(distsXX, feasible_appartenance,p_X):
+def get_feasible_info(distsXX,feasible_appartenance):
+    # Get the information of each F_y : diam(F_y), the indexes of elements corresponding to diam(F_y), the cardinal of F_y
+
+    def get_info(y_idx, fa, dXX):
+        # Getting the indexes of x's in the F_y
+        valid_idx = fa[:,y_idx].nonzero()[0]
+
+        # restricting the distsXX matrix to F_y and doing the corresponding computations
+        subdistXX = dXX[valid_idx, :][:, valid_idx]
+        subdistXX = subdistXX.toarray() 
+        
+        if subdistXX.size == 0:
+            return 0, (None, None), 0
+        
+
+        diam_Fy = np.nanmax(subdistXX)
+        flat_index = np.nanargmax(subdistXX)
+        row, col = np.unravel_index(flat_index, subdistXX.shape)
+
+        i = valid_idx[row]
+        j = valid_idx[col]
+        if True:
+            print(f'y space : {y_idx}. Diam in {i}, {j}')
+
+        return diam_Fy, (i, j), subdistXX.shape[0]
+    n,p = feasible_appartenance.shape
+
+    return list(Parallel(n_jobs=-1, backend='threading')(delayed(get_info)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p))))
+
+    
+
+
+
+def kersize_samplingYX(distsXX, feasible_appartenance):
     """
     Computes the Kersize approximation as the maximum pairwise distance within feasible sets for all target samples.
 

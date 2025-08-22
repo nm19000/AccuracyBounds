@@ -5,6 +5,27 @@ import rasterio
 from rasterio.transform import from_origin
 import os
 from tqdm import tqdm
+from accuracy_bounds.inverseproblems.utils import apply_upsampling
+
+
+
+class ImgComparator:
+    def __init__(self, fig, axlist = None):
+        self.canvas = fig.canvas
+        if axlist is None:
+            self.axlist = fig.axes
+        else:
+            self.axlist = axlist
+        self.cid_zoom = fig.canvas.mpl_connect('motion_notify_event', self.on_zoom)
+    def on_zoom(self, event):
+        if event.inaxes:
+            xlim = event.inaxes.get_xlim()
+            ylim = event.inaxes.get_ylim()
+            for ax in self.axlist:
+                ax.set_xlim(xlim)
+                ax.set_ylim(ylim)
+            self.canvas.draw_idle()
+
 
 
 # Function to apply matrix transformation A to points
@@ -75,6 +96,43 @@ def get_patches_from_S2(img,patchsize, border):
     
     all_patches = torch.stack(all_patches)
     return all_patches
+
+
+def build_S2_patched_dataset_DSHR(patchsize_X,img_dset_folder , subdatasets , out_dsfolder, labels = ('hr_data', 'lr_data'), border_X = 0, SR_factor = 4):
+    border_Y = border_X//SR_factor
+    patchsize_Y = patchsize_X//SR_factor
+
+    hr_label = labels[0]
+    lr_label = labels[1]
+
+
+    for subds in subdatasets:
+        print()
+        print(f'Subdataset : {subds}')
+
+        data_folder = os.path.join(img_dset_folder, subds)
+        img_folders = os.listdir(data_folder)
+        bar = [x for x in img_folders if 'json' not in x]
+
+        for idxstr in tqdm(bar):
+            img_folder = os.path.join(data_folder, idxstr)
+            hr_path = f'{img_folder}/{hr_label}.tif'
+
+            with rasterio.open(hr_path) as hr_src:
+                hr_img = hr_src.read()
+            hr_img = torch.from_numpy(hr_img) 
+            
+            lr_img = apply_upsampling(torch.tensor(hr_img), scale = SR_factor)
+
+            #metrics.setup(lr=lr_img, sr=sr_img, hr=hr_img)
+
+            patched_lr = get_patches_from_S2(lr_img, patchsize=patchsize_Y, border=border_Y)
+            patched_hr = get_patches_from_S2(hr_img, patchsize_X, border_X)
+
+            m = patched_lr.shape[0]
+            for i in range(m):
+                save_into_tiff(bands=np.array(patched_lr[i]), out_path=os.path.join(out_dsfolder, f'{subds}_{idxstr}_{i}_{lr_label}.tif'))
+                save_into_tiff(bands=np.array(patched_hr[i]), out_path=os.path.join(out_dsfolder, f'{subds}_{idxstr}_{i}_{hr_label}.tif'))
 
 def build_S2_patched_dataset(patchsize_X,img_dset_folder , subdatasets , out_dsfolder, labels = ('hr_data', 'lr_data'), border_X = 0, SR_factor = 4):
     border_Y = border_X//SR_factor
