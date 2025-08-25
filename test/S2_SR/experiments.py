@@ -126,32 +126,49 @@ if False:
     print(pos_test_mat)
 
 
-all_data.get_Fy_fullimg_V2('naip', '0', feas_info,feas_app, 'hr_res', 'lr_res')
-Fy_lim1, Fy_lim2, Fy_lim1_Y, Fy_lim2_Y, cards_Fy = all_data.get_Fy_lim_fullimg('naip', '0', feas_info, 'hr_res')
+#all_data.get_Fy_fullimg_V2('naip', '0', feas_info,feas_app, 'hr_res', 'lr_res')
+Fy_lim1_img, Fy_lim2_img, Fy_lim1_imgY, Fy_lim2_imgY = all_data.get_Fy_fullimg_V2('naip', '0', feas_info,feas_app, 'hr_res', 'lr_res', n_iter_max_ratio=0.7, lim_area_ratio=0.6)
+
+#Fy_lim1, Fy_lim2, Fy_lim1_Y, Fy_lim2_Y, cards_Fy = all_data.get_Fy_lim_fullimg('naip', '0', feas_info, 'hr_res')
 #Fy_lim1, Fy_lim2, cards_Fy = all_data.get_Fy_lim_fullimg_poissonblending('naip', '0', feas_info, 'hr_res')
 
 
-fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+fig, axs = plt.subplots(1, 3, figsize=(18, 6))
 
-# First subplot: low-res image
-axs[0, 0].imshow(hr_img.permute(1, 2, 0) / 3000)
-axs[0, 0].set_title('Hig-Resolution Image')
-axs[0, 0].axis('off')
+axs[0].imshow(hr_img.permute(1, 2, 0) / 3000)
+axs[0].set_title('Hig-Resolution Image')
+axs[0].axis('off')
 
-# Second subplot: high-res image
-im = axs[0, 1].imshow(cards_Fy)
-fig.colorbar(im, ax=axs[0, 1], fraction=0.046, pad=0.04)
-axs[0, 1].axis('off')
 
-# Third subplot: feasible appartenance matrix (as image)
-axs[1, 0].imshow(Fy_lim1.permute(1, 2, 0) / 3000)
-axs[1, 0].set_title('Fy lim 1')
-axs[1, 0].axis('off')
+axs[1].imshow(Fy_lim1_img.permute(1, 2, 0) / 3000)
+axs[1].set_title('Fy lim 1')
+axs[1].axis('off')
 
-# Fourth subplot: distsXX matrix (as image)
-axs[1, 1].imshow(Fy_lim2.permute(1, 2, 0) / 3000)
-axs[1, 1].set_title('Fy lim 2')
-axs[1, 1].axis('off')
+axs[2].imshow(Fy_lim2_img.permute(1, 2, 0) / 3000)
+axs[2].set_title('Fy lim 2')
+axs[2].axis('off')
+
+
+comp = ImgComparator(fig)
+plt.tight_layout()
+plt.show()
+
+
+fig, axs = plt.subplots(1, 3, figsize=(18, 6))
+
+axs[0].imshow(lr_img.permute(1, 2, 0) / 3000)
+axs[0].set_title('Low-Resolution Image')
+axs[0].axis('off')
+
+
+axs[1].imshow(Fy_lim1_imgY.permute(1, 2, 0) / 3000)
+axs[1].set_title('Fy lim 1 LR')
+axs[1].axis('off')
+
+axs[2].imshow(Fy_lim2_imgY.permute(1, 2, 0) / 3000)
+axs[2].set_title('Fy lim 2 LR')
+axs[2].axis('off')
+
 
 comp = ImgComparator(fig)
 plt.tight_layout()

@@ -602,7 +602,7 @@ def get_feasible_info(distsXX,feasible_appartenance):
 
         i = valid_idx[row]
         j = valid_idx[col]
-        if True:
+        if False:
             print(f'y space : {y_idx}. Diam in {i}, {j}')
 
         return diam_Fy, (i, j), subdistXX.shape[0]
