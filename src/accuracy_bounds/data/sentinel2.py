@@ -10,6 +10,7 @@ import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 from scipy.ndimage import label
+from scipy.ndimage import binary_dilation, binary_closing
 
 class SRDataset(Dataset):
     def __init__(self, folder_path, suffixes=('lr', 'hr'), patched_shape = (40,40)) :
@@ -283,7 +284,7 @@ class SRDataset(Dataset):
 
         return Fy_lim1_img, Fy_lim2_img, cards
 
-    def get_Fy_fullimg_V2(self, subdataset, img_idx, feasible_info,feas_app, hr_suffix = 'hr_res', lr_suffix = 'lr_res'):
+    def get_Fy_fullimg_idx_V2(self, subdataset, img_idx, feasible_info,feas_app, lim_area_ratio = 0.6, n_iter_max_ratio = 0.4):
         img_idx_list = self.imgs_idx_list[(subdataset, img_idx)]
 
         # For each index in the image, get the F_yidx info and put them into variables
@@ -312,17 +313,30 @@ class SRDataset(Dataset):
         indices_2d_diams = torch.stack((rows, cols), dim=1)
             
 
-        mask_lim1 = torch.zeros(self.patched_shape) # Mask stating where we already changed some patches on img_lim1
-        mask_lim2 = torch.zeros(self.patched_shape) # Same on img_lim2
 
+        replace_lim1_idx = np.zeros(self.patched_shape) # Stating which patch in the base image should be replaced by which one (in terms of indexes)
+        replace_lim2_idx = np.zeros(self.patched_shape)
 
-        for k in range(20): # TODO change the stopping condition to occupied areas >50%
-            print(sorted_values[k])
-            maxdiam_position = indices_2d_diams[k, :] #position of the patch verifying the max diam Fy, in the base image
+        replace_lim1_order = np.zeros(self.patched_shape)  # The order according to which the patches should be replaces
+        replace_lim2_order = np.zeros(self.patched_shape)
+        
+        replaced_prop_lim1 = 0
+        replaced_prop_lim2 = 0
+
+        n_iter = 1  # number of iterations
+        n_replace = 1 # number of times the patch replacement will be applied (smaller or equal to n_iter)
+        
+        nr,nc = self.patched_shape
+        structuring_element = np.array([[0, 1, 0],
+                                        [1, 1, 1],
+                                        [0, 1, 0]], dtype=bool)
+
+        while n_iter < nr*nc* n_iter_max_ratio and replaced_prop_lim1 < lim_area_ratio and replaced_prop_lim2 <lim_area_ratio : 
+            maxdiam_position = indices_2d_diams[n_iter, :] #position of the patch verifying the max diam Fy, in the base image
             maxdiam_position = int(maxdiam_position[0]), int(maxdiam_position[1])
             i_base, j_base = maxdiam_position
 
-            if True:
+            if False:
                 maxdiam_1D_pos = self.get_patch_idx_img(maxdiam_position)
                 print(f'Info Fy : {Fy_infos[maxdiam_1D_pos]}')
 
@@ -330,7 +344,7 @@ class SRDataset(Dataset):
             idx_Fy_lim1 = Fy_lim1_idx_small[i_base, j_base] # index of the corresponding 1st patch (call it P1) associated to diam Fy 
             idx_Fy_lim2 = Fy_lim2_idx_small[i_base, j_base] # same for second one (call it P2)
 
-            if True:
+            if False:
                 print()
                 print(f'idx_lim1 normallly : {idx_Fy_lim1}')
                 print(f'idx_lim2 normallly : {idx_Fy_lim2}')
@@ -341,11 +355,7 @@ class SRDataset(Dataset):
                 print(f'Base idx normally : {base_idx}')
                 print()
 
-
-                
-        
-
-            if True:
+            if False:
                 lim_patch1_id = self.patch_ids[int(idx_Fy_lim1)]
                 img_lim1_id = lim_patch1_id.split('_')[0],lim_patch1_id.split('_')[1]
                 patch_lim1_nb = lim_patch1_id.split('_')[2]
@@ -378,13 +388,8 @@ class SRDataset(Dataset):
                 print(f'img_lim2 : {img_lim2_id}')
                 
 
-
-
-
             lim_patch1_id = self.patch_ids[int(idx_Fy_lim1)] # the corresponding patch ids
             lim_patch2_id = self.patch_ids[int(idx_Fy_lim2)]
-
-
 
 
             img_lim1_id = lim_patch1_id.split('_')[0],lim_patch1_id.split('_')[1] # The id of the image where P1 belongs (subdataset, img idx)
@@ -393,8 +398,8 @@ class SRDataset(Dataset):
             i_lim1, j_lim1 = position_img_lim1
             search_shift_lim1 = self.get_search_shift(maxdiam_position,position_img_lim1) # The area we search on around the position of p1 on its image
             search_area_lim1 = search_shift_lim1[0]+i_lim1,search_shift_lim1[1]+i_lim1, search_shift_lim1[2]+j_lim1, search_shift_lim1[3]+j_lim1 # This area + it position onthe image = area on the image
-            same_feas_area_lim1 = self.get_same_feasible_area(maxdiam_position, position_img_lim1, search_shift_lim1, feas_app, (subdataset, img_idx), img_lim1_id)
-            same_feas_area_lim1_shifted = self.shift_mask(same_feas_area_lim1, i_base-i_lim1, j_base-j_lim1)
+            same_feas_area_lim1, replacement_idx = self.get_same_feasible_area(maxdiam_position, position_img_lim1, search_shift_lim1, feas_app, (subdataset, img_idx), img_lim1_id)
+            same_feas_area_lim1_shifted, replacement_idx_shifted_lim1 = self.shift_mask(same_feas_area_lim1, i_base-i_lim1, j_base-j_lim1), self.shift_mask(replacement_idx, i_base-i_lim1, j_base-j_lim1)
 
             img_lim2_id = lim_patch2_id.split('_')[0],lim_patch2_id.split('_')[1]
             patch_lim2_nb = lim_patch2_id.split('_')[2]
@@ -402,20 +407,55 @@ class SRDataset(Dataset):
             i_lim2, j_lim2 = position_img_lim2
             search_shift_lim2 = self.get_search_shift(maxdiam_position,position_img_lim2)
             search_area_lim2 = search_shift_lim2[0]+i_lim2,search_shift_lim2[1]+i_lim2, search_shift_lim2[2]+j_lim2, search_shift_lim2[3]+j_lim2
-            same_feas_area_lim2 = self.get_same_feasible_area(maxdiam_position, position_img_lim2, search_shift_lim2, feas_app, (subdataset, img_idx), img_lim2_id)
-            same_feas_area_lim2_shifted = self.shift_mask(same_feas_area_lim2, i_base-i_lim2, j_base-j_lim2)
+            same_feas_area_lim2, replacement_idx = self.get_same_feasible_area(maxdiam_position, position_img_lim2, search_shift_lim2, feas_app, (subdataset, img_idx), img_lim2_id)
+            same_feas_area_lim2_shifted, replacement_idx_shifted_lim2 = self.shift_mask(same_feas_area_lim2, i_base-i_lim2, j_base-j_lim2), self.shift_mask(replacement_idx, i_base-i_lim2, j_base-j_lim2)
 
 
-            if True:
+            # Verify whether there is an overlap between the dilation of the iterated mask and the mask for this mask
+            iterative_mask_lim1 = replace_lim1_idx> 0.5
+            iterative_mask_lim2 = replace_lim2_idx> 0.5
+
+            dilated_iterative_mask_lim1 = binary_dilation(iterative_mask_lim1, structure=structuring_element)
+            dilated_iterative_mask_lim2 = binary_dilation(iterative_mask_lim2, structure=structuring_element)
+
+            intersection_lim1 = np.logical_and(same_feas_area_lim1_shifted,dilated_iterative_mask_lim1 )
+            intersection_lim2 = np.logical_and(same_feas_area_lim2_shifted,dilated_iterative_mask_lim2 )
+
+            if not np.any(intersection_lim1) and not np.any(intersection_lim2):
+                # Fill the iterated replacement patch indexes
+                replace_lim1_idx = np.where(same_feas_area_lim1_shifted >0.5, replacement_idx_shifted_lim1, replace_lim1_idx)
+                replace_lim2_idx = np.where(same_feas_area_lim2_shifted >0.5, replacement_idx_shifted_lim2, replace_lim2_idx)
+                
+                # Fill the order of filling in the iterated orders of fillings
+                replace_lim1_order = np.where(same_feas_area_lim1_shifted >0.5, n_replace, replace_lim1_order)
+                replace_lim2_order = np.where(same_feas_area_lim2_shifted >0.5, n_replace, replace_lim2_order)
+
+
+                n_replace +=1
+
+
+
+            n_iter +=1
+
+            closed_mask_lim1 = binary_closing(replace_lim1_order>0.5, structure = structuring_element)
+            closed_mask_lim2 = binary_closing(replace_lim2_order>0.5, structure = structuring_element)
+
+
+            replaced_prop_lim1 = np.sum(closed_mask_lim1>0.5)/(self.patched_shape[0] * self.patched_shape[1])
+            replaced_prop_lim2 = np.sum(closed_mask_lim2>0.5)/(self.patched_shape[0] * self.patched_shape[1])
+
+            #print(f'n_iter = {n_iter-1}     n_replace = {n_replace-1} \n replaced_prop_lim1 = {np.round(100*replaced_prop_lim1)}%    replaced_prop_lim2 = {np.round(100*replaced_prop_lim2)}%')
+
+            if False and n_iter %100 ==0:
            
                 fig, axs = plt.subplots(1, 2, figsize=(10, 10))
                 axs = axs.flatten()
 
              
-                axs[0].imshow(same_feas_area_lim1, cmap='gray')
-                axs[0].set_title('same_feas_area_lim1')
-                axs[1].imshow(same_feas_area_lim2, cmap='gray')
-                axs[1].set_title('same_feas_area_lim2')
+                axs[0].imshow(replace_lim1_order>0.5, cmap='gray')
+                axs[0].set_title('Replaced areas lim 1 ')
+                axs[1].imshow(replace_lim2_order>0.5, cmap='gray')
+                axs[1].set_title('Replaced areas lim 2')
 
                 plt.tight_layout()
                 plt.show()
@@ -427,10 +467,47 @@ class SRDataset(Dataset):
              #Within the condition that the patch is not in the masked area
              # 2.Check for which patches, the patch if imglim belongs to the corresponding feasible set in the base image (shift to take in account)        mask_lim1 = torch.zeros(self.patched_shape)
              # 3. Take the connected component around the patch in question and paste it to the basee image
-
         
+        return replace_lim1_idx,replace_lim2_idx, replace_lim1_order, replace_lim2_order
 
-        return None
+    def get_Fy_fullimg_V2(self, subdataset, img_idx, feasible_info,feas_app, hr_suffix = 'hr_res', lr_suffix = 'lr_res',  lim_area_ratio = 0.6, n_iter_max_ratio = 0.4):
+        replace_lim1_idx,replace_lim2_idx, replace_lim1_order, replace_lim2_order = self. get_Fy_fullimg_idx_V2(subdataset = subdataset, img_idx = img_idx, feasible_info = feasible_info, feas_app= feas_app, lim_area_ratio=lim_area_ratio, n_iter_max_ratio=n_iter_max_ratio)
+        replace_lim1_idx_flat,replace_lim2_idx_flat, replace_lim1_order_flat, replace_lim2_order_flat = replace_lim1_idx.flatten(),replace_lim2_idx.flatten(), replace_lim1_order.flatten(), replace_lim2_order.flatten()
+        # Get the indexlist of the original image
+        baseimg_idx_list = np.array(self.imgs_idx_list[(subdataset, img_idx)])
+
+        # For v1 : fill the image directly with the index list
+        # For v2 : use patch blending to fill effectively the lim images
+        blending = True
+        if not blending:
+            # Fill the indexes arrays by replacing
+            img_lim1_idx_flat = np.where(replace_lim1_order_flat>0.5,replace_lim1_idx_flat,baseimg_idx_list ).astype(int)
+            img_lim2_idx_flat = np.where(replace_lim2_order_flat>0.5,replace_lim2_idx_flat,baseimg_idx_list ).astype(int)
+
+            Fy_lim1_img = self.recompose_image(img_lim1_idx_flat, suffix = hr_suffix)
+            Fy_lim2_img = self.recompose_image(img_lim2_idx_flat, suffix= hr_suffix)
+
+            Fy_lim1_imgY = self.recompose_image(img_lim1_idx_flat, suffix = lr_suffix)
+            Fy_lim2_imgY = self.recompose_image(img_lim2_idx_flat, suffix= lr_suffix)
+        else:
+            base_imgX = self.recompose_image(baseimg_idx_list, suffix=hr_suffix)
+            max_iter = np.max(replace_lim1_order_flat)
+            
+            for i in reversed(range(max_iter+1)):
+                # Isolate the indexes corresponding to that order in the 2D array
+                res_mask_lim1 = True
+
+
+                # get the image corresponding to that order
+                # Isolate the part of the image corresponging to these indexes
+
+                # Stick the isolated part of the image to the base image. 
+                # ATTENTION, the isolated part of the image should go to the position in the base image
+
+                pass
+
+
+        return Fy_lim1_img, Fy_lim2_img, Fy_lim1_imgY, Fy_lim2_imgY
     
     def get_same_feasible_area(self, position_base, position_lim, search_shift_lim, feas_app, base_img_id, lim_img_id):
         '''
@@ -441,12 +518,8 @@ class SRDataset(Dataset):
         i_base, j_base = position_base
 
         mask_same_feasible_lim = np.zeros(self.patched_shape)
+        replacement_idx = np.zeros(self.patched_shape)
         sh_ymin, sh_ymax, sh_xmin, sh_xmax = search_shift_lim
-
-        #ymin, ymax = i_lim + sh_ymin, i_lim + sh_ymax
-        #xmin, xmax = j_lim + sh_xmin, j_lim + sh_xmax
-
-
 
         for i in range(sh_ymin, sh_ymax):
             for j in range(sh_xmin, sh_xmax):
@@ -457,6 +530,10 @@ class SRDataset(Dataset):
                 idx_lim = self.imgs_idx_list[lim_img_id][pos1D_lim]
             
                 mask_same_feasible_lim[i+i_lim, j+j_lim] = feas_app[idx_lim, idx_base]
+                if mask_same_feasible_lim[i+i_lim, j+j_lim] >0.5:
+                    replacement_idx[i+i_lim, j+j_lim] = idx_lim
+
+
                 if i==0 and j==0 and feas_app[idx_lim, idx_base] ==0 and True:
                     
                     print()
@@ -466,18 +543,18 @@ class SRDataset(Dataset):
                     print(f'Looked Base position : {position_2D_base}')
                     print(f'Looked indexes : {idx_lim}, {idx_base}')
 
-
-        if False:
-            plt.imshow(mask_same_feasible_lim)
-            plt.show()
         labeled_array, num_features = label(mask_same_feasible_lim)
         
-
         component_label = labeled_array[i_lim, j_lim]
 
         if component_label == 0:
-            return  np.zeros_like(mask_same_feasible_lim, dtype=bool)
-        return labeled_array == component_label
+            return  np.zeros_like(mask_same_feasible_lim, dtype=bool), np.zeros_like(mask_same_feasible_lim)
+        
+
+        mask_same_feasible_lim = labeled_array == component_label
+        replacement_idx = replacement_idx * mask_same_feasible_lim
+        return mask_same_feasible_lim, replacement_idx
+        
         
     
     def get_search_shift(self,position_base, position_lim):
@@ -491,7 +568,7 @@ class SRDataset(Dataset):
 
 
     def shift_mask(self,mask, k, l):
-        shifted = np.zeros_like(mask, dtype=bool)
+        shifted = np.zeros_like(mask)
         
         rows, cols = mask.shape
         
