@@ -605,7 +605,7 @@ def get_feasible_info(distsXX,feasible_appartenance):
         if False:
             print(f'y space : {y_idx}. Diam in {i}, {j}')
 
-        return diam_Fy, (i, j), subdistXX.shape[0]
+        return float(diam_Fy), [int(i), int(j)], int(subdistXX.shape[0])
     n,p = feasible_appartenance.shape
 
     return list(Parallel(n_jobs=-1, backend='threading')(delayed(get_info)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p))))
