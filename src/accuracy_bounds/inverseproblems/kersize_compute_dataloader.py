@@ -360,6 +360,39 @@ We distinguish 2 kind of samplings :
 
 '''
 
+def norms_batch_cuda(target_null_data, p_X):
+    x_flat = target_null_data.flatten(start_dim = 1)
+    return torch.norm(x_flat, p = p_X, dim=-1)
+
+def norms_perbatch_cuda(target_null_data, p_X):
+    assert isinstance(target_null_data, DataLoader)
+    assert isinstance(target_null_data.sampler, SequentialSampler)
+
+    n_target_null = len(target_null_data.dataset)
+
+    norms_all = torch.zeros(n_target_null)
+    for target_null_batch_id,target_null_batch in enumerate(target_null_data):
+        print(f"Target Batch: [{target_null_batch_id+1} / {len(target_null_data)}]                    ", end="\r")
+
+        norms_small = norms_batch_cuda(target_null_batch['img'], p_X=p_X)
+        batch_size_current = target_null_batch['img'].shape[0]
+
+        idx_imin = batch_size_current * target_null_batch_id
+        idx_imax = batch_size_current * (target_null_batch_id + 1)
+
+        norms_all[idx_imin:idx_imax] = norms_small
+
+    return norms_all
+
+def avgLB_sym_samplingYX(null_norms, p):
+    return np.nanmean(null_norms**p)**(1/p)
+
+
+
+
+
+
+
 
 def insert_no_overlap_keep_A(A_coo, B_csr):
     A = A_coo.coalesce()
@@ -398,6 +431,58 @@ def sparse_block(A, i0, i1, j0, j1, out_layout="coo"):
 
     return B if out_layout == "coo" else B.to_sparse_csr()
 
+#TODO : allow any custom norm in the distance computation (not only the normm p)
+
+def target_distances_samplingYX_precomputedFA_perbatch_cuda(A, target_data1, target_data2, feasible_appartenance, p_X):
+    '''
+    Same as target_distances_samplingYX_perbatch_cuda but here, the feasible appartenance matrix is precomputed
+    '''
+    assert isinstance(target_data1, DataLoader) and isinstance(target_data2, DataLoader) , 'Data input is only supported as Dataloader'
+    #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
+    assert isinstance(target_data1.sampler, SequentialSampler) and \
+           isinstance(target_data2.sampler, SequentialSampler), \
+           'Dataloaders with Random samplers are not supported'
+    
+    n_target = len(target_data1.dataset)
+
+    common_feasible = feasible_appartenance@(feasible_appartenance.transpose(0, 1))
+
+    distsXX = torch.sparse_coo_tensor(
+        indices=torch.empty((2, 0), dtype=torch.long),  # no nonzero entries yet
+        values=torch.tensor([], dtype=torch.float32),
+        size=(n_target, n_target)
+    )    
+
+    for target_batch_id1, target_batch1 in enumerate(target_data1):
+
+        for target_batch_id2, target_batch2 in enumerate(target_data2):
+            print(f"Target Batch1: [{target_batch_id1+1} / {len(target_data1)}],     Target Batch2: [{target_batch_id2+1} / {len(target_data2)}]                    ", end="\r")
+
+            batch_size_target = target_batch1["img"].shape[0]
+
+            idx_imin = batch_size_target * target_batch_id1
+            idx_imax = batch_size_target * (target_batch_id1 + 1)
+
+            idx_jmin = batch_size_target * target_batch_id2
+            idx_jmax = batch_size_target * (target_batch_id2 + 1)
+
+            dists_small = distsXX_samplingYX_batch_cuda(A, target_batch1["img"], target_batch2["img"], p_X)
+            
+            common_feasible_small = sparse_block(common_feasible, idx_imin, idx_imax, idx_jmin, idx_jmax, out_layout="coo").to_dense()            
+            mask = common_feasible_small != 0
+
+            dists_small[~mask] = 0
+
+            i0, i1 = idx_imin, idx_imax
+            j0, j1 = idx_jmin, idx_jmax
+            H, W = i1 - i0, j1 - j0
+
+            dists_small = offset_csr_block(dists_small.to_sparse_csr(), i0, j0, (n_target, n_target))
+            distsXX = insert_no_overlap_keep_A(distsXX, dists_small)
+    return distsXX, feasible_appartenance
+    
+
+
 def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, target_data2, forwarded_target, p_X, p_Y, epsilon):
     """
     Computes pairwise distances between target samples (in X), considering only those pairs that belong to the same feasible set F_y.
@@ -416,10 +501,11 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, targe
         distsXX (scipy.sparse.lil_matrix): Matrix of pairwise distances between feasible target samples.
         feasible_appartenance (scipy.sparse.csr_matrix): Feasibility matrix indicating which x belongs to which F_y.
     """
-    assert isinstance(input_data, DataLoader) and isinstance(target_data1, DataLoader) and isinstance(target_data2, DataLoader) , 'Data input is only supported as Dataloader'
+    assert isinstance(input_data, DataLoader) and isinstance(target_data1, DataLoader) and isinstance(target_data2, DataLoader) and isinstance(forwarded_target, DataLoader) , 'Data input is only supported as Dataloader'
     #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
     assert isinstance(input_data.sampler, SequentialSampler) and \
            isinstance(target_data1.sampler, SequentialSampler) and \
+           isinstance(forwarded_target, DataLoader) and \
            isinstance(target_data2.sampler, SequentialSampler), \
            'Dataloaders with Random samplers are not supported'
 
@@ -471,6 +557,8 @@ def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, targe
 
         for target_batch_id2, target_batch2 in enumerate(target_data2):
             print(f"Target Batch1: [{target_batch_id1+1} / {len(target_data1)}],     Target Batch2: [{target_batch_id2+1} / {len(target_data2)}]                    ", end="\r")
+
+            batch_size_target = target_batch1["img"].shape[0]
 
             idx_imin = batch_size_target * target_batch_id1
             idx_imax = batch_size_target * (target_batch_id1 + 1)
@@ -531,6 +619,8 @@ def offset_csr_block(local_csr: torch.Tensor, i0: int, j0: int, global_shape):
 
     return torch.sparse_csr_tensor(crow_g, col_off, val, size=global_shape,
                                    device=device, dtype=local_csr.dtype)
+
+
 
 # TODO: Why is A needed here? 
 def distsXX_samplingYX_batch_cuda(A, target_data1, target_data2 , p_X):
@@ -610,9 +700,6 @@ def get_feasible_info(distsXX,feasible_appartenance):
 
     return list(Parallel(n_jobs=-1, backend='threading')(delayed(get_info)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p))))
 
-    
-
-
 
 def kersize_samplingYX(distsXX, feasible_appartenance):
     """
@@ -650,7 +737,7 @@ def kersize_samplingYX(distsXX, feasible_appartenance):
 
     return np.nanmax(np.array(list(results)))
 
-def avgLB_samplingYX(distsXX, feasible_appartenance, p_X):
+def avgLB_samplingYX(distsXX, feasible_appartenance, p):
     """
     Computes the lower bound of the average error.
 
@@ -674,14 +761,14 @@ def avgLB_samplingYX(distsXX, feasible_appartenance, p_X):
         subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
         
         size_feas = len(valid_idx)
-        return 2*np.nanmean(subdistXX**p_X)
+        return np.nanmean(subdistXX**p)
 
 
 
     n,p = feasible_appartenance.shape
     results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p)))
 
-    return np.nanmean(np.asarray(list(results)))/(2**p_X)
+    return np.nanmean(np.asarray(list(results)))**(1/p)
 
 def avgkersize_samplingYX(distsXX, feasible_appartenance, p_X):
     """

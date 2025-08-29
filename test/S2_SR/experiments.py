@@ -22,11 +22,18 @@ import json
 if __name__ == '__main__':
     Test = False # Whether we use a small test dataset or the full one
     DSHR = True
-    PS_X = 12
+    PS_X = 20
     SR_factor = 4
     noise_level_KS = 4000
     preload_feas_info = True
-    patched_shapes = {'naip':(40,40), 'spain_crops': (42,42), 'spain_urban': (42,42), 'spot': (42,42)} 
+
+    patched_shapes12 = {'naip':(40,40), 'spain_crops': (32,32), 'spain_urban': (42,42), 'spot': (42,42)} 
+    patched_shapes16 = {'naip':(30,30), 'spain_crops': (32,32), 'spain_urban': (32,32), 'spot': (32,32)} 
+    patched_shapes20 = {'naip':(24,24), 'spain_crops': (25,25), 'spain_urban': (25,25), 'spot': (25,25)} 
+
+    patched_shapes_all = {12: patched_shapes12, 16:patched_shapes16, 20:patched_shapes20}
+
+    patched_shapes = patched_shapes_all[PS_X]
 
 
     # Running the algo on the test dataset
@@ -143,9 +150,12 @@ if __name__ == '__main__':
     all_data = SRDataset(folder_path=data_path, suffixes=('lr_res', 'hr_res'), patched_shapes=patched_shapes)
 
     subdataset = 'naip'
-    for idx_img in range(1,10):
+    for idx_img in range(10):
         hr_img =  all_data.get_full_img(subdataset, str(idx_img), 'hr_res')
         lr_img = all_data.get_full_img(subdataset, str(idx_img), 'lr_res')
+
+
+        #TODO : Test the full images dataset object and compute the LB + Kersizes on it.
 
         # Does not give realistic images
         #Fy_lim1, Fy_lim2, Fy_lim1_Y, Fy_lim2_Y = all_data.get_Fy_fullimg_V3('naip', '0', feas_info,feas_app,sigma_blend=1, hr_suffix= 'hr_res', lr_suffix='lr_res' )
