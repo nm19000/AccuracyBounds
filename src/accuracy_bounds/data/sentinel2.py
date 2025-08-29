@@ -634,7 +634,7 @@ class SRDataset_perimg(Dataset):
             i_lim1, j_lim1 = position_img_lim1
             search_shift_lim1 = self.get_search_shift(maxdiam_position,position_img_lim1, patched_shape_base, patched_shape_lim1) # The area we search on around the position of p1 on its image
             search_area_lim1 = search_shift_lim1[0]+i_lim1,search_shift_lim1[1]+i_lim1, search_shift_lim1[2]+j_lim1, search_shift_lim1[3]+j_lim1 # This area + it position onthe image = area on the image
-            same_feas_area_lim1, replacement_idx = self.get_same_feasible_area(maxdiam_position, position_img_lim1, search_shift_lim1, feas_app, (subdataset, img_idx), img_lim1_id,patched_shape_lim1, patched_shape_base )
+            same_feas_area_lim1, replacement_idx = self.get_same_feasible_area(maxdiam_position, position_img_lim1, search_shift_lim1, feas_app, (subdataset, img_idx_insubds), img_lim1_id,patched_shape_lim1, patched_shape_base )
             same_feas_area_lim1_shifted, replacement_idx_shifted_lim1 = self.shift_mask(same_feas_area_lim1, i_base-i_lim1, j_base-j_lim1, patched_shape_dst=patched_shape_base), self.shift_mask(replacement_idx, i_base-i_lim1, j_base-j_lim1, patched_shape_dst=patched_shape_base)
 
             img_lim2_id = self.get_img_id(int(idx_Fy_lim2))
@@ -645,7 +645,7 @@ class SRDataset_perimg(Dataset):
             i_lim2, j_lim2 = position_img_lim2
             search_shift_lim2 = self.get_search_shift(maxdiam_position,position_img_lim2, patched_shape_base, patched_shape_lim2)
             search_area_lim2 = search_shift_lim2[0]+i_lim2,search_shift_lim2[1]+i_lim2, search_shift_lim2[2]+j_lim2, search_shift_lim2[3]+j_lim2
-            same_feas_area_lim2, replacement_idx = self.get_same_feasible_area(maxdiam_position, position_img_lim2, search_shift_lim2, feas_app, (subdataset, img_idx), img_lim2_id, patched_shape_lim2, patched_shape_base)
+            same_feas_area_lim2, replacement_idx = self.get_same_feasible_area(maxdiam_position, position_img_lim2, search_shift_lim2, feas_app, (subdataset, img_idx_insubds), img_lim2_id, patched_shape_lim2, patched_shape_base)
             same_feas_area_lim2_shifted, replacement_idx_shifted_lim2 = self.shift_mask(same_feas_area_lim2, i_base-i_lim2, j_base-j_lim2, patched_shape_dst=patched_shape_base), self.shift_mask(replacement_idx, i_base-i_lim2, j_base-j_lim2, patched_shape_dst=patched_shape_base)
 
 
