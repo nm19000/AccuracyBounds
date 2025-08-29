@@ -322,6 +322,86 @@ def get_distance(
 
     return distance_fn.compute()
 
+def apply_square_op_small(Op_Mat,img, out_2Dshape):
+    '''
+    The image has a shape of C,h,w
+    Function to apply an opertor into a 2d mateix form, to an image in 2d * channels. 
+    For each channel, it flattens the the channel into a 1d vector, before applying matrix multiplication and reshaping to the desired 2d shape. Note that reshape is the inverse function of flatten.
+    '''
+    matlist = []
+    for i in range(img.shape[0]):
+        matlist.append((Op_Mat@np.asarray(img[i]).flatten()).reshape(out_2Dshape))
+    return torch.tensor(np.stack(matlist))
+
+
+def apply_square_op_full(Op_mat, img, out_2D_shape_op, border = 4):
+    '''
+    The operator has to be square. It applies to P_{N(A)} for example
+    '''
+    c,h,w = img.shape
+    b,a = out_2D_shape_op
+    n_y = (h)//(b-2*border)
+    n_x = (w)//(a-2*border)
+
+    OP_img = torch.zeros_like(img)
+    for i in range(n_y):
+        for j in range(n_x):
+            # idx, operator, place
+            imin = i*(b-2*border)
+            imax = imin + b
+
+            jmin = j*(a-2*border)
+            jmax = jmin + a
+
+            if jmax<=w and imax<=h:
+                if i==0 and j ==0:
+                    Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                    OP_img[:,imin:imax-border,jmin: jmax-border ] = Apatch[:,: -border, :-border]
+                elif i==0 and j >0:
+                    Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                    OP_img[:,imin:imax-border,jmin+border: jmax-border ] = Apatch[:,: -border, border:-border]
+                elif i>0 and j==0:
+                    Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                    OP_img[:,imin+border:imax-border,jmin: jmax-border ] = Apatch[:,border: -border, :-border]
+                
+                else :
+                    Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                    OP_img[:,imin+border:imax-border,jmin+border: jmax-border ] = Apatch[:,border: -border, border:-border]
+
+    # Do it for the last row, col
+    for i in range(n_y):
+        imin = i*(b-2*border)
+        imax = imin + b
+
+        jmin = h-a
+        jmax = h
+
+        if imax <= h:
+            if i==0:
+                Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                OP_img[:,imin:imax-border,jmin+border: jmax ] = Apatch[:,: -border, border:]
+            else:
+                Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                OP_img[:,imin+border:imax-border,jmin+border: jmax ] = Apatch[:,border: -border, border:]
+    
+    for j in range(n_x):
+        jmin = j*(a-2*border)
+        jmax = jmin + a
+
+        imin = w-b
+        imax = w
+
+        if jmax <= w:
+            if j==0:
+                Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                OP_img[:,imin+border:imax,jmin: jmax-border ] = Apatch[:,border: , :-border]
+            else:
+                Apatch = apply_square_op_small(Op_mat, img[:,imin:imax, jmin:jmax], out_2Dshape=out_2D_shape_op)
+                OP_img[:,imin+border:imax,jmin+border: jmax-border ] = Apatch[:,border: , border:-border]
+    
+    Apatch = apply_square_op_small(Op_mat, img[:,w-b:w, h-a:h], out_2Dshape=out_2D_shape_op)
+    OP_img[:,w-b+border:w,h-a+border: h ] = Apatch[:,border: , border:]
+    return OP_img
 
 
 class ImgComparator:
