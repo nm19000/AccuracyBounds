@@ -47,10 +47,10 @@ $$
     - ElseIf $N(k) = 0$:
         - $v_k = 0$
     - EndIf
-    - $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K \gets \operatorname{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K+v_k$
+    - $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K \gets \tedxt{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K+v_k$
 - EndFor
-- $\operatorname{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K=\left(\frac{1}{K} \operatorname{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K\right)^{1/p}$
-- Return $\operatorname{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K$ 
+- $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K=\left(\frac{1}{K} \text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K\right)^{1/p}$
+- Return $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K$ 
 
 
 # References
