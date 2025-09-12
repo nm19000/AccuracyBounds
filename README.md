@@ -23,7 +23,7 @@ $$
         - If $F(x_{k,n},e_{k,n})= y_k$ (Implementation of condition is forward model dependent.):
             - $F_{y_k}^{N(k)} \gets F_{y_k}^{N(k)} \bigcup \{x_{k,n}\}$
             - $\mathcal{D} \gets \mathcal{D} \bigcup \{(x_{k,n}, y_k)\}$
-        - ElsIf $|F_{y_k}^{N(k)}| \geq N(K)_{max}$ (For $\mathcal{M}_1 \times \mathcal{E}$ infinite $N(K)_{max} \in \mathbb{N}$ is required.):
+        - ElsIf $|F_{y_k}^{N(k)}| \geq N(K)_{max}$:
             - Break 
         - EndIf 
     - EndFor
