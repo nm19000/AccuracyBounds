@@ -21,7 +21,7 @@ $$
     - $F_{y_k}^{N(k)} = \emptyset$, $N(k) = 0$
     - For $(x_{k,n},e_{k,n}) \in \mathcal{M}_1\times \mathcal{E}$ ( here the sampling strategy does not affect the validity of the accuracy bounds).
         - If $F(x_{k,n},e_{k,n})= y_k$ (Implementation of condition is forward model dependent.):
-            - $F_{y_k}^{N(k)} \gets F_{y_k}^{N(k)} \bigcup \{x_{k,n}\}$
+            - $F_{y_k}^{N(k)} \gets F_{y_k}^{N(k)} \bigcup {x_{k,n}}$
             - $\mathcal{D} \gets \mathcal{D} \bigcup \{(x_{k,n}, y_k)\}$
         - ElsIf $|F_{y_k}^{N(k)}| \geq N(K)_{max}$:
             - Break 
@@ -29,9 +29,9 @@ $$
     - EndFor
     - $N(k) = |F_{y_k}^{N(k)}|$
     - $\{N(k)\}_{k=1}^K \gets \bigcup_k N(k)$
-    - $\{F_{y_k}^{N(k)}\}_{k=1}^K \gets \bigcup_k F_{y_k}^{N(k)}$
+    - $\{F_{y_k}^{N(k)}\} \gets \bigcup_k F_{y_k}^{N(k)}$
 - EndFor 
-- Return:  $\{F_{y_k}^{N(k)}\}_{k=1}^K$, $\{N(k)\}_{k=1}^K$, $\mathcal{D}$
+- Return:  $\{F_{y_k}^{N(k)}\}$, $\{N(k)\}_{k=1}^K$, $\mathcal{D}$
 
 
 
