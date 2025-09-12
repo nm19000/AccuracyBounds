@@ -32,6 +32,20 @@ $$
 - EndFor 
 - Return:  $(F_{y_k}^{N(k)})$, $(N(k))_{k=1}^K$, $\mathcal{D}$
 
+### Algoritm for Computing the Worst-Case Kernel Size From Feasible Sets
+
+- Require $p \in (0,\infty)$, $K \in \mathbb{N}$, $(F_{y_k}^{N(k)})_{k=1}^K$, $(N(k))_{k=1}^K$
+- State $\text{Kersize}^w(F,\mathcal{M}_1,\mathcal{E},p)_K = 0$
+- For $k \in \{1,...,K\}$:
+    - $v_k = \emptyset$
+    - If $N(k)\neq 0$:
+        - While $x_{k,n},x_{k,n'} \in F_{y_k}$:
+            - $v_k \gets v_k \bigcup \|x_{k,n} -x_{k,n'}\|^p$
+        - EndWhile
+            - $v_k = \max \|x_{k,n} -x_{k,n'}\|^p$
+    - EndIf
+- $\text{Kersize}^w(F,\mathcal{M}_1,\mathcal{E},p)_K = \max_k v_k$
+- Return $$\text{Kersize}^w(F,\mathcal{M}_1,\mathcal{E},p)_K$
 
 
 ### Algoritm for Computing the Average Kernel Size From Feasible Sets
@@ -47,7 +61,7 @@ $$
     - ElseIf $N(k) = 0$:
         - $v_k = 0$
     - EndIf
-    - $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K \gets \tedxt{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K+v_k$
+    - $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K \gets \text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K+v_k$
 - EndFor
 - $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K=\left(\frac{1}{K} \text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K\right)^{1/p}$
 - Return $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K$ 
