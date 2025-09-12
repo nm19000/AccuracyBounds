@@ -1,4 +1,4 @@
-from accuracy_bounds.data.sentinel2 import SRDataset
+from data.sr_multispectral_satellite_data.sentinel2 import SRDataset
 from torch.utils.data import DataLoader
 import torch
 from scipy import sparse
