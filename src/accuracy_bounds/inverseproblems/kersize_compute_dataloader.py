@@ -4,32 +4,8 @@ import numpy as np
 from tqdm import tqdm
 import time
 from torch.utils.data import DataLoader, SequentialSampler
+from feasible_sets import compute_feasible_set_linear_forwardmodel
 
-def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
-    """
-    Implements the iterative algorithm for estimating feasible sets for one input point based on possible target data points for a noisy inverse problem. 
-        Arguments:
-        - A: The matrix (for which we are computing the Moore-Penrose inverse) of the inverse problem input_data = A(target_data)+noise.
-        - input_data_point: Input data point, referred to as "y" in variable names, for an approximate inverse method.
-        - target_data: Target or ground truth data for an approximate inverse method.
-        - p: order of the norm, default p=2 for MSE computation.
-        - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
-
-        Returns:
-        - feas_set_approx: approximation to the feasible set, consisting of all target data points that can map to an input data point within the noise level.
-    """
-
-    # Step 2: Compute feasible set for input data point y
-    feas_set_y = []
-
-    for x_n in target_data:
-        e_n = input_data_point - torch.dot(A,x_n) # Compute noise vector
-
-        if torch.linalg.norm(e_n,p) <= epsilon:  # Check if noise is below noiselevel
-            # add traget data point x_n to feasible set
-            feas_set_y.append(x_n)
-
-    return feas_set_y
 
 def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
     """
@@ -51,7 +27,7 @@ def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
     """
 
     # Step 2: Compute feasible sets and diameters
-    feas_set_y = compute_feasible_set(A, input_data_point, target_data, p, epsilon)
+    feas_set_y = compute_feasible_set_linear_forwardmodel(A, input_data_point, target_data, p, epsilon)
     max_diam_Fy = 0
     diameter_mean_y = 0
     diam_y = []
