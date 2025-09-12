@@ -161,22 +161,3 @@ def projection_nullspace(A, x):
     
     return x_ns
 
-
-def apply_upsampling(x: torch.Tensor, scale: int) -> torch.Tensor:
-    """Upsampling a tensor (B, C, H, W) to a lower resolution
-    (B, C, H', W') using bilinear interpolation with antialiasing.
-
-    Args:
-        x (torch.Tensor): The tensor to upsample.
-        scale (int, optional): The super-resolution scale. Defaults
-            to 4.
-
-    Returns:
-        torch.Tensor: The upsampled tensor (B, C, H', W').
-    """
-
-    x_ref = torch.nn.functional.interpolate(
-        input=x[None], scale_factor=1 / scale, mode="bilinear", antialias=True
-    ).squeeze()
-
-    return x_ref
