@@ -28,8 +28,8 @@ $$
         - EndIf 
     - EndFor
     - $N(k) = |F_{y_k}^{N(k)}|$
-    - $\{N(k)\}_{k=1}^K \gets \bigcup_{k=1}^K N(k)$
-    - $\{F_{y_k}^{N(k)}\}_{k=1}^K \gets \bigcup_{k=1}^K F_{y_k}^{N(k)}$
+    - $\{N(k)\}_{k=1}^K \gets \bigcup_k N(k)$
+    - $\{F_{y_k}^{N(k)}\}_{k=1}^K \gets \bigcup_k F_{y_k}^{N(k)}$
 - EndFor 
 - Return:  $\{F_{y_k}^{N(k)}\}_{k=1}^K$, $\{N(k)\}_{k=1}^K$, $\mathcal{D}$
 
