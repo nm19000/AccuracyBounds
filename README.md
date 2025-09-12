@@ -30,7 +30,7 @@ $$
     - $(N(k))_{k=1}^K \gets \bigcup_k N(k)$
     - $(F_{y_k}^{N(k)}) \gets \bigcup_k F_{y_k}^{N(k)}$
 - EndFor 
-- Return:  $(F_{y_k}^{N(k)})$, $(N(k))_{k=1}^K$, $\mathcal{D}$
+- Return:  $(F_{y_k}^{N(k)})_{k=1}^K$, $(N(k))_{k=1}^K$, $\mathcal{D}$
 
 ### Algoritm for Computing the Worst-Case Kernel Size From Feasible Sets
 
@@ -50,7 +50,7 @@ $$
 
 ### Algoritm for Computing the Average Kernel Size From Feasible Sets
 
-- Require $p \in (0,\infty)$, $K \in \mathbb{N}$, $(F_{y_k}^{N(k)})_{k=1}^K$, $(N(k))_{k=1}^K$
+- Require $p \in (0,\infty)$, $K \in \mathbb{N}$,  $(F_{y_k}^{N(k)})_{k=1}^K$, $(N(k))_{k=1}^K$
 - State $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K = 0$
 - For $k \in \{1,...,K\}$:
     - If $N(k)\neq 0$:
