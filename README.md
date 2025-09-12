@@ -23,15 +23,15 @@ $$
         - If $F(x_{k,n},e_{k,n})= y_k$ (Implementation of condition is forward model dependent.):
             - $F_{y_k}^{N(k)} \gets F_{y_k}^{N(k)} \bigcup \{x_{k,n}\}$
             - $\mathcal{D} \gets \mathcal{D} \bigcup \{(x_{k,n}, y_k)\}$
-        - ElsIf $\left|F_{y_k}^{N(k)}\right| \geq N(K)_{max}$ (For $\mathcal{M}_1 \times \mathcal{E}$ infinite $N(K)_{max} \in \mathbb{N}$ is required.):
+        - ElsIf $|F_{y_k}^{N(k)}| \geq N(K)_{max}$ (For $\mathcal{M}_1 \times \mathcal{E}$ infinite $N(K)_{max} \in \mathbb{N}$ is required.):
             - Break 
         - EndIf 
     - EndFor
-    - $N(k) = \left|F_{y_k}^{N(k)}\right|$
+    - $N(k) = F_{y_k}^{N(k)}|$
     - $\{N(k)\}_{k=1}^K \gets \bigcup_{k=1}^K N(k)$
-    - $\left\{F_{y_k}^{N(k)}\right\}_{k=1}^K \gets \bigcup_{k=1}^K F_{y_k}^{N(k)}$
+    - $\{F_{y_k}^{N(k)}\}_{k=1}^K \gets \bigcup_{k=1}^K F_{y_k}^{N(k)}$
 - EndFor 
-- Return:  $\left\{F_{y_k}^{N(k)}\right\}_{k=1}^K$, $\{N(k)\}_{k=1}^K$, $\mathcal{D}$
+- Return:  $\{F_{y_k}^{N(k)}\}_{k=1}^K$, $\{N(k)\}_{k=1}^K$, $\mathcal{D}$
 
 
 
