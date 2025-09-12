@@ -45,7 +45,7 @@ $$
             - $v_k = \max \|x_{k,n} -x_{k,n'}\|^p$
     - EndIf
 - $\text{Kersize}^w(F,\mathcal{M}_1,\mathcal{E},p)_K = \max_k v_k$
-- Return $$\text{Kersize}^w(F,\mathcal{M}_1,\mathcal{E},p)_K$
+- Return $\text{Kersize}^w(F,\mathcal{M}_1,\mathcal{E},p)_K$
 
 
 ### Algoritm for Computing the Average Kernel Size From Feasible Sets
