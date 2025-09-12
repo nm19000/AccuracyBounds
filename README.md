@@ -1,60 +1,46 @@
 # Accuracy Bounds
 
-## Accuracy Bound for Inverse Problems
+## Accuracy Bounds for Inverse Problems
 
 
 Computation of worst-case and average kernel size from [1] for an inverse problem with noise of the form: 
 
 $$
-\text{Given measurements } y = F(x,e)=Ax+e \text{ of } x \in \mathcal{M}_1 \subset \mathbb{R}^N \text{ and } e \in \mathcal{E} \subset \mathbb{R}^m, \text{ recover } x.
+\text{recover } x \in \mathcal{M}_1 \subset \C^{d_1} \text{ given noisy measurements } y = F(x,e)\in \mathbb{C}^{d_2} \text{ of } x  \text{ and }  e \in \E\subset \C^{d_3}.
 $$
 
-Initial algoritms converge under the assumption that 
-$$
-\pi_1(P_{\mathcal{N}(F)^L}(x,e) - P_{\mathcal{N}(F)}(x,e)) \in \mathcal{M}_1.
-$$
 
-### Algoritm for computing the worst-case kernel size
+### Algoritm for Allocating Signal Data into Feasible Sets
 
-1) Randomly with any distribution $\mu$ sample 
-$$
-\{y_i\}_{i=1}^k \subset \mathcal{M}_2 = A(\mathcal{M}_1)
-$$
-for $k \in \mathbb{N}$. For incresing $k$ only new $y_i \in \mathcal{M}_2$ are added and the old sampled points are kept.
-2) Compute 
-$$
-\text{diam}(\pi_1(F_{y_i})) = \sup_{x,x' \in \pi_1(F_{y_i})} d_1(x,x')
-$$ 
-using a finite approximation $F_{y_i}^n \subseteq F_{y_i}$ with $|F_{y_i}^n|=n$, where $n = n(k)$ is a function of $k$ such that $n \geq k$ and $n \to \infty$ when $k \to \infty$. 
-Set $F^0_{y_i} = \emptyset$ and 
-$$
-x^L_i = \pi_1(F^t y_i) \in P_{\mathcal{N}(F)^L}(\mathcal{M}_1).
-$$ 
-Then, iteratively for $n \in \mathbb{N}$ for randomly sampled $x_n \in \mathcal{M}_1$, if
-       $$
-        e_n:= y_i - F(x_n,0)\in \mathcal{E},
-       $$
-    let $F^n_{y_i}  = F^{n-1}_{y_i}  \cup \{x_n\}$ with the $x_n$ chosen as above. 
-    Set $\text{diam}(\pi_1(F^0_{y_i}))=0$. Then, for each $n \in \mathbb{N}$ if 
-        $$
-        ||\pi_1(P_{\mathcal{N}(F)}(x_n,e_n))|| = ||\pi_1((I-F^{t}F)(x_n,e_n))|| > ||\pi_1((I-F^{t}F)(x_{n-1},e_{n-1}))||,
-        $$
-    set 
-    $$
-    \text{diam}(\pi_1(F^n_{y_i}))= 2||\pi_1((I-F^{t}F)(x_n,e_n))||
-    $$ 
-    and if 
-        $$
-        ||\pi_1(P_{\mathcal{N}(F)}(x_n,e_n))|| = ||\pi_1((I-F^{t}F)(x_n,e_n))|| \leq  ||\pi_1((I-F^{t}F)(x_{n-1},e_{n-1}))||,
-        $$
-    set 
-    $$
-    \text{diam}(\pi_1(F^n_{y_i}))= 2||\pi_1((I-F^{t}F)(x_{n-1},e_{n-1}))||.
-    $$
-3) Now obtain the approximate worst case kernel size by 
-       $$
-       \text{kersize}^w(\mathcal{M}_1, A,\mathcal{E} )_{k} = \max_{i \in \{1, ..., k\}} \text{diam}(\pi_1(F^{n(k)}_{y_i})).
-       $$
+
+
+\begin{algorithmic}
+\Require  $K, N(K)_{\mathrm{max}} \in \mathbb{N}$, $\mathcal{M}_2$, $\mathcal{M}_1\times \mathcal{E}$, $F$
+\State $\mathcal{D} = \emptyset$
+\For{$k \in \{1,...,K\}$}
+    \State $y_k \in \mathcal{M}_2$, 
+    \Comment{The samples $y_k$ can be either given as inputs or sampled during the algorithm.}
+    \State $F_{y_k}^{N(k)} = \emptyset$
+    \State $N(k) = 0$
+    \For{$(x_{k,n},e_{k,n}) \in \mathcal{M}_1\times \mathcal{E}$}
+    \Comment{The sampling strategy does not affect the validity of \Cref{thm:lowerboundapprx}.}
+    \If{$F(x_{k,n},e_{k,n})= y_k$}
+    \Comment{Implementation of condition is forward model dependent.}
+    \State $F_{y_k}^{N(k)} \gets F_{y_k}^{N(k)} \bigcup \{x_{k,n}\}$
+    \State $\mathcal{D} \gets \mathcal{D} \bigcup \{(x_{k,n}, y_k)\}$
+ \ElsIf{$\left|F_{y_k}^{N(k)}\right| \geq N(K)_{\mathrm{max}}$}
+ \Comment{For $\mathcal{M}_1\times \mathcal{E}$ infinite $N(K)_{\mathrm{max}} \in \mathbb{N}$ is required.}
+    \Break 
+    \EndIf 
+    \EndFor
+    \State $N(k) = \left|F_{y_k}^{N(k)}\right|$
+    \State $\{N(k)\}_{k=1}^K \gets \bigcup_{k=1}^K N(k)$
+    \State $\left\{F_{y_k}^{N(k)}\right\}_{k=1}^K \gets \bigcup_{k=1}^K F_{y_k}^{N(k)}$
+\EndFor 
+
+\Return  $\left\{F_{y_k}^{N(k)}\right\}_{k=1}^K$, $\{N(k)\}_{k=1}^K$, $\mathcal{D}$
+\end{algorithmic}
+
 
 ### Algoritm for computing the average kernel size
 
