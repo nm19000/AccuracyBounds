@@ -34,7 +34,7 @@ $$
 
 ### Algoritm for Computing the Worst-Case Kernel Size From Feasible Sets
 
-- Require $p \in (0,\infty)$, $K \in \mathbb{N}$, $(F_{y_k}^{N})K$, $(N(k))$
+- Require $p \in (0,\infty)$, $K \in \mathbb{N}$, $(F_{y_k}^{N})$, $(N(k))$
 - State $\text{Kersize}^w(F,\mathcal{M}_1,\mathcal{E},p)_K = 0$
 - For $k \in \{1,...,K\}$:
     - $v_k = \emptyset$
