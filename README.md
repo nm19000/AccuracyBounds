@@ -6,7 +6,7 @@
 Computation of worst-case and average kernel size from [1] for an inverse problem with noise of the form: 
 
 $$
-\text{recover } x \in \mathcal{M}_1 \subset \C^{d_1} \text{ given noisy measurements } y = F(x,e)\in \mathbb{C}^{d_2} \text{ of } x  \text{ and }  e \in \E\subset \C^{d_3}.
+\text{recover } x \in \mathcal{M}_1 \subset \mathbb{C}^{d_1} \text{ given noisy measurements } y = F(x,e)\in \mathbb{C}^{d_2} \text{ of } x  \text{ and }  e \in \\mathcal{E}\subset \mathbb{C}^{d_3}.
 $$
 
 
@@ -14,32 +14,25 @@ $$
 
 
 
-\begin{algorithmic}
-\Require  $K, N(K)_{\mathrm{max}} \in \mathbb{N}$, $\mathcal{M}_2$, $\mathcal{M}_1\times \mathcal{E}$, $F$
-\State $\mathcal{D} = \emptyset$
-\For{$k \in \{1,...,K\}$}
-    \State $y_k \in \mathcal{M}_2$, 
-    \Comment{The samples $y_k$ can be either given as inputs or sampled during the algorithm.}
-    \State $F_{y_k}^{N(k)} = \emptyset$
-    \State $N(k) = 0$
-    \For{$(x_{k,n},e_{k,n}) \in \mathcal{M}_1\times \mathcal{E}$}
-    \Comment{The sampling strategy does not affect the validity of \Cref{thm:lowerboundapprx}.}
-    \If{$F(x_{k,n},e_{k,n})= y_k$}
-    \Comment{Implementation of condition is forward model dependent.}
-    \State $F_{y_k}^{N(k)} \gets F_{y_k}^{N(k)} \bigcup \{x_{k,n}\}$
-    \State $\mathcal{D} \gets \mathcal{D} \bigcup \{(x_{k,n}, y_k)\}$
- \ElsIf{$\left|F_{y_k}^{N(k)}\right| \geq N(K)_{\mathrm{max}}$}
- \Comment{For $\mathcal{M}_1\times \mathcal{E}$ infinite $N(K)_{\mathrm{max}} \in \mathbb{N}$ is required.}
-    \Break 
-    \EndIf 
-    \EndFor
-    \State $N(k) = \left|F_{y_k}^{N(k)}\right|$
-    \State $\{N(k)\}_{k=1}^K \gets \bigcup_{k=1}^K N(k)$
-    \State $\left\{F_{y_k}^{N(k)}\right\}_{k=1}^K \gets \bigcup_{k=1}^K F_{y_k}^{N(k)}$
-\EndFor 
+- Require  $K, N(K)_{\mathrm{max}} \in \mathbb{N}$, $\mathcal{M}_2$, $\mathcal{M}_1\times \mathcal{E}$, $F$
+- $\mathcal{D} = \emptyset$
+- For $k \in \{1,...,K\}$:
+    - $y_k \in \mathcal{M}_2$, here samples $y_k$ can be either given as inputs or sampled during the algorithm.
+    - $F_{y_k}^{N(k)} = \emptyset$, $N(k) = 0$
+    - For $(x_{k,n},e_{k,n}) \in \mathcal{M}_1\times \mathcal{E}$ ( here the sampling strategy does not affect the validity of the accuracy bounds).
+        - If $F(x_{k,n},e_{k,n})= y_k$ (Implementation of condition is forward model dependent.):
+            - $F_{y_k}^{N(k)} \gets F_{y_k}^{N(k)} \bigcup \{x_{k,n}\}$
+            - $\mathcal{D} \gets \mathcal{D} \bigcup \{(x_{k,n}, y_k)\}$
+        - ElsIf $\left|F_{y_k}^{N(k)}\right| \geq N(K)_{\mathrm{max}}$ (For $\mathcal{M}_1\times \mathcal{E}$ infinite $N(K)_{\mathrm{max}} \in \mathbb{N}$ is required.):
+            - Break 
+        - EndIf 
+    - EndFor
+    - $N(k) = \left|F_{y_k}^{N(k)}\right|$
+    - $\{N(k)\}_{k=1}^K \gets \bigcup_{k=1}^K N(k)$
+    - $\left\{F_{y_k}^{N(k)}\right\}_{k=1}^K \gets \bigcup_{k=1}^K F_{y_k}^{N(k)}$
+- EndFor 
+- Return:  $\left\{F_{y_k}^{N(k)}\right\}_{k=1}^K$, $\{N(k)\}_{k=1}^K$, $\mathcal{D}$
 
-\Return  $\left\{F_{y_k}^{N(k)}\right\}_{k=1}^K$, $\{N(k)\}_{k=1}^K$, $\mathcal{D}$
-\end{algorithmic}
 
 
 ### Algoritm for computing the average kernel size
