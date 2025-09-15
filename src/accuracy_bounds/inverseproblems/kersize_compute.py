@@ -177,7 +177,7 @@ def average_kernelsize(feasible_sets_list, p_1, p):
 
     for feasible_set_y in feasible_sets_list:
         # compute diameter of feasible set for one input data point (num_feas will be used for statistics later on)
-        diameter_mean_y, num_feas, max_diam_Fy = diams_feasibleset(feasible_set_y, p_1 ,p)
+        diameter_mean_y, num_feas, max_diam_Fy = diams_feasibleset(np.array(feasible_set_y), p_1 ,p)
         #add diameters means for obtaining average kersize to the power p
         average_kersize = average_kersize + diameter_mean_y
         
@@ -234,7 +234,7 @@ def compute_average_kernelsize(feasible_sets_list, p_1, p):
 
     average_kersize_list = average_kernelsize(feasible_sets_list, p_1, p)
     
-    print("Average-Kernel Size:", average_kersize_list[-1])
+    print("Average-Kernel Size:", average_kersize_list)
 
     return np.array(average_kersize_list)
 
@@ -252,7 +252,7 @@ def compute_worstcase_kernelsize(feasible_sets_list, p_1, p):
 
     worstcase_kersize_list = worstcase_kernelsize(feasible_sets_list, p_1, p)
     
-    print("WorstCase-Kernel Size:", worstcase_kersize_list[-1])
+    print("WorstCase-Kernel Size:", worstcase_kersize_list)
 
     return np.array(worstcase_kersize_list)
 
@@ -260,15 +260,15 @@ def compute_average_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsi
 
     average_kersize_sym_list = average_kernelsize(A, input_data, target_data, p_1, p_2, p, epsilon)
     
-    print("Average-Sym-Kernel Size:", average_kersize_sym_list[-1])
+    print("Average-Sym-Kernel Size:", average_kersize_sym_list)
 
     return np.array(average_kersize_sym_list)
 
-def compute_worstcase_kernel_size_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
+def compute_worstcase_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
 
     worstcase_kersize_sym_list = worstcase_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon)
     
-    print("WorstCase-Sym-Kernel Size:", worstcase_kersize_sym_list[-1])
+    print("WorstCase-Sym-Kernel Size:", worstcase_kersize_sym_list)
 
     return np.array(worstcase_kersize_sym_list)
 
