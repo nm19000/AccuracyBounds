@@ -11,7 +11,7 @@ from .kersize_compute import (
     wc_kernelsize_sym_batch_cuda,
     wc_kernelsize_nosym_perbatch_cuda, 
     wc_kernelsize_nosym_crossbatch_cuda,
-    compute_worstcase_kernel_size_sym,
+    compute_worstcase_kernelsize_sym,
     compute_average_kernelsize_sym,
     compute_worstcase_kernelsize,
     compute_average_kernelsize,
