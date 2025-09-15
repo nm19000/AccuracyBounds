@@ -2,6 +2,10 @@ from .utils import (
     projection_nullspace,
 )
 
+from .feasible_sets import (
+    compute_feasible_set_linear_forwardmodel
+)
+
 from .kersize_compute import (
     wc_kernelsize_nosym_batch_cuda, 
     wc_kernelsize_sym_batch_cuda,
@@ -12,7 +16,8 @@ from .kersize_compute import (
     diams_feasibleset_inv_sym,
     diams_feasibleset_inv_sym,
     diams_feasibleset_inv,
-    compute_feasible_set
+    compute_av_kernel_size,
+    compute_wc_kernel_size
     )
 
 __all__ = (
