@@ -4,21 +4,19 @@ import torch
 from scipy.sparse import csr_matrix, lil_matrix
 from joblib import Parallel, delayed
 from pdb import set_trace
-from feasible_sets import compute_feasible_set_linear_forwardmodel
+from .feasible_sets import compute_feasible_set_linear_forwardmodel
+from .utils import projection_nullspace_operator
 
+# plain python versions
 
-
-def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
+def diams_feasibleset(feasible_set_y, p_1 ,p):
     """
-    Implements the iterative algorithm for diameter estimation of the feasible set for a noisy inverse problem. 
-    Computes diameter based on possible target data points for one input point.
+    Implements computation of the diameter of the feasible set for a inverse problem. 
+    Computes diameter based on a feasible set for one measurement or also input data point.
         Arguments:
-        - A: The matrix (for which we are computing the Moore-Penrose inverse) of the inverse problem input_data = A(target_data)+noise.
-        - input_data_point: Input data point, referred to as "y" in variable names, for an approximate inverse method.
-        - target_data: Target or ground truth data for an approximate inverse method.
-        - p: order of the norm, default p=2 for MSE computation.
-        - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
-
+        - feasible_set_y: feasible set for one measurement y.
+        - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
+        - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
         Returns:
         - diameter_mean_y, num_feas, max_diam_Fy: diameter_mean_y of dim(0)= shape(input_data), the estimated mean diameter of the feasible set, 
                                         consisting of all possible target data points, for one input point.
@@ -28,7 +26,7 @@ def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
     """
 
     # Step 2: Compute feasible sets and diameters
-    feas_set_y = compute_feasible_set_linear_forwardmodel(A, input_data_point, target_data, p, epsilon)
+    feas_set_y = feasible_set_y
     max_diam_Fy = 0
     diameter_mean_y = 0
     diam_y = []
@@ -40,7 +38,7 @@ def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
         for j in range(0,h+1,1):
             #compute vectors in null space of F and their norm
             dist_ns = feas_set_y[h]-feas_set_y[j]
-            diameter= np.linalg.norm(dist_ns, ord = p)
+            diameter= np.linalg.norm(dist_ns, ord = p_1)
 
             #add to diam_y 
             diam_y.append(diameter)
@@ -59,7 +57,7 @@ def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
 
     return diameter_mean_y, num_feas, max_diam_Fy
 
-def diams_feasibleset_inv_sym(A, input_data_point, target_data, p, epsilon):
+def diams_feasibleset_linear_forwardmodel_sym(A, input_data_point, target_data, p_1, p_2, p, epsilon):
     """
     Implements the iterative algorithm for diameter estimation of the feasible set for a noisy inverse problem under the assumption that 
     there exists noise vectors such that the target data is symmetric with respect to the null space of F= (A |I): P_{N(F)^perp}(x,e)-P_{N(F)}(x,e). 
@@ -68,9 +66,10 @@ def diams_feasibleset_inv_sym(A, input_data_point, target_data, p, epsilon):
         - A: The matrix (for which we are computing the Moore-Penrose inverse) of the inverse problem input_data = A(target_data)+noise.
         - input_data_point: Input data point, referred to as "y" in variable names, for an approximate inverse method.
         - target_data: Target or ground truth data for an approximate inverse method.
-        - p: order of the norm, default p=2 for MSE computation.
+        - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
+        - p_2: Order of the norm on the target dataset $\mathcal{M}_2 = A(\mathcal{M}_1)+\mathcal{E}$. Set to p=2 for the ell 2 norm computation.
+        - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
         - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
-
         Returns:
         - diameter_mean_y, num_feas, max_diam_Fy: diameter_mean_y of dim(0)= shape(input_data), the estimated mean diameter of the feasible set, 
                                         consisting of all possible target data points, for one input point.
@@ -91,12 +90,12 @@ def diams_feasibleset_inv_sym(A, input_data_point, target_data, p, epsilon):
         xcomp = len(x_n)-1
         e_n = input_data_point - np.dot(A,x_n) # Compute noise vector
 
-        if np.linalg.norm(e_n,p) <= epsilon:  # Check if noise is below noiselevel
+        if np.linalg.norm(e_n,p_2) <= epsilon:  # Check if noise is below noiselevel
             # Project onto the null space of F
             proj_nullspace = np.dot(proj_ns_F, np.hstack((x_n, e_n)))[0:xcomp] # Project (x_n, e_n) onto nullspace of F, only take dim of x_n
 
             # Compute diameter of feasible set based on projection onto null space
-            diameter = 2 * np.linalg.norm(proj_nullspace, ord = p)   
+            diameter = 2 * np.linalg.norm(proj_nullspace, ord = p_1)   
 
             #add to diam_y 
             diam_y.append(diameter)
@@ -113,29 +112,53 @@ def diams_feasibleset_inv_sym(A, input_data_point, target_data, p, epsilon):
 
     return diameter_mean_y, num_feas, max_diam_Fy
 
-def wc_kernelsize(A, input_data, target_data, p, epsilon):
+def worstcase_kernelsize(feasible_sets_list, p_1 ,p):
     """
-    Computes the worst-case kernel size for noisy inverse problem using Algorithm 1.
+    Computes the worst-case kernel size for noisy inverse problem from a list of feasible sets.
+
+    Args:
+        - feasible_sets_list: list of feasible sets.
+        - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
+        - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
+    Returns:
+        - worstcase_kersize: Approximate worst-case kernel size for a set of input data samples.
+    """
+    
+    worstcase_kersize =0
+
+    for feasible_set_y in feasible_sets_list:
+        feasible_set_y 
+        # compute diameter of feasible set for one input data point
+        diameter_mean_y, num_feas, max_diam_Fy = diams_feasibleset(feasible_set_y, p_1 ,p)
+        if max_diam_Fy > worstcase_kersize:
+            worstcase_kersize = max_diam_Fy
+    
+    return worstcase_kersize
+
+def worstcase_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
+    """
+    Computes the worst-case kernel size for noisy inverse problem from a linear forward model with additive noise, target and input data.
 
     Args:
         - A: The matrix (for which we are computing the Moore-Penrose inverse) of the inverse problem input_data = A(target_data)+noise.
         - input_data: Input data for an approximate inverse method.
         - target_data: Target or ground truth data for an approximate inverse method.
-        - p: order of the norm, default p=2 for MSE computation.
+        - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
+        - p_2: Order of the norm on the target dataset $\mathcal{M}_2 = A(\mathcal{M}_1)+\mathcal{E}$. Set to p=2 for the ell 2 norm computation.
+        - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
         - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
-
     Returns:
-        Approximate worst-case kernel size for a set of input data samples.
+        - worstcase_kersize: Approximate worst-case kernel size for a set of input data samples.
     """
-    wc_kersize =0
+    worstcase_kersize =0
 
     for y in input_data:
         # compute diameter of feasible set for one input data point
-        diameter_mean_y, num_feas, max_diam_Fy = diams_feasibleset_inv(A, y, target_data, p, epsilon)
-        if max_diam_Fy > wc_kersize:
-            wc_kersize = max_diam_Fy
+        diameter_mean_y, num_feas, max_diam_Fy = diams_feasibleset_linear_forwardmodel_sym(A, y, target_data, p_1, p_2, p, epsilon)
+        if max_diam_Fy > worstcase_kersize:
+            worstcase_kersize = max_diam_Fy
     
-    return wc_kersize
+    return worstcase_kersize
 
 def av_kernelsize(A, input_data, target_data, p, epsilon):
     """
@@ -183,6 +206,9 @@ def compute_wc_kernel_size(A, input_data, target_data, p, q, epsilon, max_k):
     print("WC-Kernel Size:", wc_kersize_k_list[-1])
 
     return np.array(wc_kersize_k_list)
+
+
+# cuda versions
 
 def wc_kernelsize_sym_crossbatch_cuda(A,F_null, batch1, batch2, p_X, p_Y, epsilon):
 
