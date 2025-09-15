@@ -4,7 +4,6 @@ import torch
 from scipy.sparse import csr_matrix, lil_matrix
 from joblib import Parallel, delayed
 from pdb import set_trace
-from .feasible_sets import compute_feasible_set_linear_forwardmodel
 from .utils import projection_nullspace_operator
 
 # plain python versions
@@ -87,7 +86,7 @@ def diams_feasibleset_linear_forwardmodel_sym(A, input_data_point, target_data, 
     diam_y = []
 
     for x_n in target_data:
-        xcomp = len(x_n)-1
+        xcomp = len(x_n)+1
         e_n = input_data_point - np.dot(A,x_n) # Compute noise vector
 
         if np.linalg.norm(e_n,p_2) <= epsilon:  # Check if noise is below noiselevel
@@ -177,7 +176,7 @@ def average_kernelsize(feasible_sets_list, p_1, p):
 
     for feasible_set_y in feasible_sets_list:
         # compute diameter of feasible set for one input data point (num_feas will be used for statistics later on)
-        diameter_mean_y, num_feas, max_diam_Fy = diams_feasibleset(np.array(feasible_set_y), p_1 ,p)
+        diameter_mean_y, num_feas, max_diam_Fy = diams_feasibleset(feasible_set_y, p_1 ,p)
         #add diameters means for obtaining average kersize to the power p
         average_kersize = average_kersize + diameter_mean_y
         
@@ -219,59 +218,6 @@ def average_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
     average_kersize_sym =  np.power(average_kersize_sym, 1/p)
     
     return average_kersize_sym
-
-def compute_average_kernelsize(feasible_sets_list, p_1, p):
-    """
-    Computes a numpy array of the average kernel size for noisy inverse problem from a list of feasible sets.
-
-    Args:
-        - feasible_sets_list: list of feasible sets.
-        - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
-        - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
-    Returns:
-        - average_kersize: Approximate worst-case kernel size for a set of input data samples.
-    """
-
-    average_kersize_list = average_kernelsize(feasible_sets_list, p_1, p)
-    
-    print("Average-Kernel Size:", average_kersize_list)
-
-    return np.array(average_kersize_list)
-
-def compute_worstcase_kernelsize(feasible_sets_list, p_1, p):
-    """
-    Computes a numpy array of the worst-case kernel size for noisy inverse problem from a list of feasible sets.
-
-    Args:
-        - feasible_sets_list: list of feasible sets.
-        - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
-        - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
-    Returns:
-        - worstcase_kersize: Approximate worst-case kernel size for a set of input data samples.
-    """
-
-    worstcase_kersize_list = worstcase_kernelsize(feasible_sets_list, p_1, p)
-    
-    print("WorstCase-Kernel Size:", worstcase_kersize_list)
-
-    return np.array(worstcase_kersize_list)
-
-def compute_average_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
-
-    average_kersize_sym_list = average_kernelsize(A, input_data, target_data, p_1, p_2, p, epsilon)
-    
-    print("Average-Sym-Kernel Size:", average_kersize_sym_list)
-
-    return np.array(average_kersize_sym_list)
-
-def compute_worstcase_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
-
-    worstcase_kersize_sym_list = worstcase_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon)
-    
-    print("WorstCase-Sym-Kernel Size:", worstcase_kersize_sym_list)
-
-    return np.array(worstcase_kersize_sym_list)
-
 
 # cuda versions
 
