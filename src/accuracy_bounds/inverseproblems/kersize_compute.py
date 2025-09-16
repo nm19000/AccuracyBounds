@@ -31,7 +31,6 @@ def diams_feasibleset(feasible_set_y, p_1 ,p):
     diam_y = []
     # obtain number of samples in feasible set (num_feas will be used for statistics later on)
     num_feas = len(feas_set_y)
-    print(num_feas)
     # compute diameters
     for h in range(0,num_feas,1):
         for j in range(0,h+1,1):
@@ -48,7 +47,6 @@ def diams_feasibleset(feasible_set_y, p_1 ,p):
                             
     # get mean over diams, with factor 2 due to symmetry of the norm of the compute vectors in null space of F (norm(x-z)=norm(z-x))
     # and divided by num_feas^2 ad we have that many terms
-    print(len(diam_y))
     if num_feas > 0:      
         # compute 2 times sum over diams to the power p divided by num_feas^2
         diameter_mean_y = 2*np.divide(np.sum(np.power(diam_y,p)), np.power(num_feas,2))
@@ -217,13 +215,10 @@ def average_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
         average_kersize_sym = average_kersize_sym + diameter_mean_y
         
     # get mean over input data
-    print(average_kersize_sym)
     if average_kersize_sym > 0 and num_samples >0: 
         average_kersize_sym = np.divide(average_kersize_sym, num_samples)    
     else:
         average_kersize_sym = 0
-    print("after mean")
-    print(average_kersize_sym)
     # take power 1/p to obtain average kersize
     average_kersize_sym =  np.power(average_kersize_sym, 1/p)
     
