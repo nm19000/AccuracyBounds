@@ -31,7 +31,7 @@ def diams_feasibleset(feasible_set_y, p_1 ,p):
     diam_y = []
     # obtain number of samples in feasible set (num_feas will be used for statistics later on)
     num_feas = len(feas_set_y)
-
+    print(num_feas)
     # compute diameters
     for h in range(0,num_feas,1):
         for j in range(0,h+1,1):
@@ -48,6 +48,7 @@ def diams_feasibleset(feasible_set_y, p_1 ,p):
                             
     # get mean over diams, with factor 2 due to symmetry of the norm of the compute vectors in null space of F (norm(x-z)=norm(z-x))
     # and divided by num_feas^2 ad we have that many terms
+    print(len(diam_y))
     if num_feas > 0:      
         # compute 2 times sum over diams to the power p divided by num_feas^2
         diameter_mean_y = 2*np.divide(np.sum(np.power(diam_y,p)), np.power(num_feas,2))
@@ -83,7 +84,7 @@ def diams_feasibleset_linear_forwardmodel_sym(A, input_data_point, target_data, 
     # Step 2: Compute feasible sets and diameters
     max_diam_Fy = 0
     diameter_mean_y = 0
-    diam_y = []
+    norm_projection_y = []
 
     for x_n in target_data:
         xcomp = len(x_n)+1
@@ -93,21 +94,21 @@ def diams_feasibleset_linear_forwardmodel_sym(A, input_data_point, target_data, 
             # Project onto the null space of F
             proj_nullspace = np.dot(proj_ns_F, np.hstack((x_n, e_n)))[0:xcomp] # Project (x_n, e_n) onto nullspace of F, only take dim of x_n
 
-            # Compute diameter of feasible set based on projection onto null space
-            diameter = 2 * np.linalg.norm(proj_nullspace, ord = p_1)   
+            # Compute norm of feasible set based on projection onto null space
+            norm_projection = np.linalg.norm(proj_nullspace, ord = p_1)   
 
             #add to diam_y 
-            diam_y.append(diameter)
+            norm_projection_y.append(norm_projection)
 
             #get ascending diams
-            if diameter > max_diam_Fy:
-                max_diam_Fy = diameter
+            if norm_projection > max_diam_Fy:
+                max_diam_Fy = 2*norm_projection
                 
     # obtain number of samples in feasible set (num_feas will be used for statistics later on)
-    num_feas = len(diam_y)        
+    num_feas = len(norm_projection_y)        
     # get mean over diams 
     if num_feas > 0:      
-        diameter_mean_y = np.mean(np.power(diam_y,p))
+        diameter_mean_y = np.mean(np.power(norm_projection_y,p))
 
     return diameter_mean_y, num_feas, max_diam_Fy
 
@@ -123,7 +124,7 @@ def worstcase_kernelsize(feasible_sets_list, p_1 ,p):
         - worstcase_kersize: Approximate worst-case kernel size for a set of input data samples.
     """
     
-    worstcase_kersize =0
+    worstcase_kersize = 0
 
     for feasible_set_y in feasible_sets_list:
         feasible_set_y 
@@ -181,7 +182,10 @@ def average_kernelsize(feasible_sets_list, p_1, p):
         average_kersize = average_kersize + diameter_mean_y
         
     # get mean over input data
-    average_kersize = np.divide(average_kersize, num_samples)    
+    if average_kersize>0 and num_samples > 0:
+        average_kersize = np.divide(average_kersize, num_samples)   
+    else: 
+        average_kersize = 0
     # take power 1/p to obtain average kersize
     average_kersize =  np.power(average_kersize, 1/p)
     
@@ -213,7 +217,13 @@ def average_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
         average_kersize_sym = average_kersize_sym + diameter_mean_y
         
     # get mean over input data
-    average_kersize_sym = np.divide(average_kersize_sym, num_samples)    
+    print(average_kersize_sym)
+    if average_kersize_sym > 0 and num_samples >0: 
+        average_kersize_sym = np.divide(average_kersize_sym, num_samples)    
+    else:
+        average_kersize_sym = 0
+    print("after mean")
+    print(average_kersize_sym)
     # take power 1/p to obtain average kersize
     average_kersize_sym =  np.power(average_kersize_sym, 1/p)
     
