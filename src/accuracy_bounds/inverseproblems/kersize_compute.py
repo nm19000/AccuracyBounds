@@ -1,5 +1,4 @@
 import numpy as np
-#from utils import projection_nullspace_operator
 import torch
 from scipy.sparse import csr_matrix, lil_matrix
 from joblib import Parallel, delayed
@@ -12,11 +11,13 @@ def diams_feasibleset(feasible_set_y, p_1 ,p):
     """
     Implements computation of the diameter of the feasible set for a inverse problem. 
     Computes diameter based on a feasible set for one measurement or also input data point.
-        Arguments:
+    
+    Args:
         - feasible_set_y: feasible set for one measurement y.
         - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
         - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
-        Returns:
+    
+    Returns:
         - diameter_mean_y, num_feas, max_diam_Fy: diameter_mean_y of dim(0)= shape(input_data), the estimated mean diameter of the feasible set to the power p, 
                                         consisting of all possible target data points, for one input point.
                                         num_feas is the number of samples in the feasible set and will be used for statistics later on.
@@ -60,7 +61,8 @@ def diams_feasibleset_linear_forwardmodel_sym(A, input_data_point, target_data, 
     Implements the iterative algorithm for diameter estimation of the feasible set for a noisy inverse problem under the assumption that 
     there exists noise vectors such that the target data is symmetric with respect to the null space of F= (A |I): P_{N(F)^perp}(x,e)-P_{N(F)}(x,e). 
     Computes diameter based on possible target data points for one input point.
-        Arguments:
+    
+    Args:
         - A: The matrix (for which we are computing the Moore-Penrose inverse) of the inverse problem input_data = A(target_data)+noise.
         - input_data_point: Input data point, referred to as "y" in variable names, for an approximate inverse method.
         - target_data: Target or ground truth data for an approximate inverse method.
@@ -68,7 +70,8 @@ def diams_feasibleset_linear_forwardmodel_sym(A, input_data_point, target_data, 
         - p_2: Order of the norm on the target dataset $\mathcal{M}_2 = A(\mathcal{M}_1)+\mathcal{E}$. Set to p=2 for the ell 2 norm computation.
         - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
         - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
-        Returns:
+    
+    Returns:
         - diameter_mean_y, num_feas, max_diam_Fy: diameter_mean_y of dim(0)= shape(input_data), the estimated mean diameter of the feasible set, 
                                         consisting of all possible target data points, for one input point.
                                         num_feas is the number of samples in the feasible set and will be used for statistics later on.
@@ -145,6 +148,7 @@ def worstcase_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
         - p_2: Order of the norm on the target dataset $\mathcal{M}_2 = A(\mathcal{M}_1)+\mathcal{E}$. Set to p=2 for the ell 2 norm computation.
         - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
         - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
+    
     Returns:
         - worstcase_kersize: Approximate worst-case kernel size for a set of input data samples.
     """
@@ -166,6 +170,7 @@ def average_kernelsize(feasible_sets_list, p_1, p):
         - feasible_sets_list: list of feasible sets.
         - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
         - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
+    
     Returns:
         - average_kersize: Approximate worst-case kernel size for a set of input data samples.
     """
@@ -201,6 +206,7 @@ def average_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
         - p_2: Order of the norm on the target dataset $\mathcal{M}_2 = A(\mathcal{M}_1)+\mathcal{E}$. Set to p=2 for the ell 2 norm computation.
         - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
         - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
+    
     Returns:
         - average_kersize: Approximate average kernel size for a set of input data samples.
     """
@@ -226,7 +232,7 @@ def average_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
 
 # cuda versions
 
-def wc_kernelsize_sym_crossbatch_cuda(A,F_null, batch1, batch2, p_X, p_Y, epsilon):
+def wc_kernelsize_sym_crossbatch_cuda(A, F_null, batch1, batch2, p_X, p_Y, epsilon):
 
     input1, target1 = batch1
     input2,target2 = batch2
