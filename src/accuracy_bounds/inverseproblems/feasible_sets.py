@@ -1,19 +1,16 @@
 import numpy as np
-#from utils import projection_nullspace_operator
 import torch
 from scipy.sparse import csr_matrix, lil_matrix
 from joblib import Parallel, delayed
-from pdb import set_trace
 
 
-def compute_feasible_set_linear_forwardmodel(A, input_data_point, target_data, p, epsilon):
+def compute_feasible_set_linear_forwardmodel(A, input_data_point, target_data, p_2, epsilon):
     """
     Implements the iterative algorithm for estimating feasible sets for one input point based on possible target data points for a noisy inverse problem. 
         Arguments:
         - A: The matrix (for which we are computing the Moore-Penrose inverse) of the inverse problem input_data = A(target_data)+noise.
         - input_data_point: Input data point, referred to as "y" in variable names, for an approximate inverse method.
-        - target_data: Target or ground truth data for an approximate inverse method.
-        - p: order of the norm, default p=2 for MSE computation.
+        - p_2: Order of the norm on the target dataset $\mathcal{M}_2 = A(\mathcal{M}_1)+\mathcal{E}$. Set to p=2 for the ell 2 norm computation.
         - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
 
         Returns:
@@ -26,7 +23,7 @@ def compute_feasible_set_linear_forwardmodel(A, input_data_point, target_data, p
     for x_n in target_data:
         e_n = input_data_point - np.dot(A,x_n) # Compute noise vector
 
-        if np.linalg.norm(e_n,p) <= epsilon:  # Check if noise is below noiselevel
+        if np.linalg.norm(e_n,p_2) <= epsilon:  # Check if noise is below noiselevel
             # add traget data point x_n to feasible set
             feas_set_y.append(x_n)
 

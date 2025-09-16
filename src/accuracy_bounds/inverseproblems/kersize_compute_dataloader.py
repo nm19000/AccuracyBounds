@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import time
 from torch.utils.data import DataLoader, SequentialSampler
-from feasible_sets import compute_feasible_set_linear_forwardmodel
+from .feasible_sets import compute_feasible_set_linear_forwardmodel
 
 
 def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
