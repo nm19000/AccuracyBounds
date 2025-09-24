@@ -2,7 +2,7 @@ from data.sr_multispectral_satellite_data.sentinel2 import SRDataset
 from torch.utils.data import DataLoader
 import torch
 from scipy import sparse
-from accuracy_bounds.inverseproblems.utils import torch_csr_to_scipy, torch_sparse_to_scipy_csr
+from .utils import torch_csr_to_scipy, torch_sparse_to_scipy_csr
 from accuracy_bounds.inverseproblems.kersize_compute_dataloader import (target_distances_samplingYX_perbatch_cuda,
     kersize_samplingYX,
     avgLB_samplingYX,

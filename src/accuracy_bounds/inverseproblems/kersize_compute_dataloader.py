@@ -11,14 +11,15 @@ def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
     """
     Implements the iterative algorithm for diameter estimation of the feasible set for a noisy inverse problem. 
     Computes diameter based on possible target data points for one input point.
-        Arguments:
+    
+    Args:
         - A: The matrix (for which we are computing the Moore-Penrose inverse) of the inverse problem input_data = A(target_data)+noise.
         - input_data_point: Input data point, referred to as "y" in variable names, for an approximate inverse method.
         - target_data: Target or ground truth data for an approximate inverse method.
         - p: order of the norm, default p=2 for MSE computation.
         - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
 
-        Returns:
+    Returns:
         - diameter_mean_y, num_feas, max_diam_Fy: diameter_mean_y of dim(0)= shape(input_data), the estimated mean diameter of the feasible set, 
                                         consisting of all possible target data points, for one input point.
                                         num_feas is the number of samples in the feasible set and will be used for statistics later on.

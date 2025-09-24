@@ -1,6 +1,9 @@
 import numpy as np
 import random
 import torch 
+from scipy.sparse import coo_matrix, csc_matrix
+from scipy.sparse.linalg import svds
+import scipy.sparse as sp
 import rasterio
 from rasterio.transform import from_origin
 import os
@@ -564,3 +567,100 @@ def build_S2_patched_dataset(patchsize_X,img_dset_folder , subdatasets , out_dsf
                 save_into_tiff(bands=np.array(patched_lr[i]), out_path=os.path.join(out_dsfolder, f'{subds}_{idxstr}_{i}_{lr_label}.tif'))
                 save_into_tiff(bands=np.array(patched_hr[i]), out_path=os.path.join(out_dsfolder, f'{subds}_{idxstr}_{i}_{hr_label}.tif'))
 
+
+def apply_upsampling(x: torch.Tensor, scale: int) -> torch.Tensor:
+    """Upsampling a tensor (B, C, H, W) to a lower resolution
+    (B, C, H', W') using bilinear interpolation with antialiasing.
+
+    Args:
+        x (torch.Tensor): The tensor to upsample.
+        scale (int, optional): The super-resolution scale. Defaults
+            to 4.
+
+    Returns:
+        torch.Tensor: The upsampled tensor (B, C, H', W').
+    """
+
+    x_ref = torch.nn.functional.interpolate(
+        input=x[None], scale_factor=1 / scale, mode="bilinear", antialias=True
+    ).squeeze()
+
+    return x_ref
+
+class ImgComparator:
+    def __init__(self, fig, axlist = None):
+        self.canvas = fig.canvas
+        if axlist is None:
+            self.axlist = fig.axes
+        else:
+            self.axlist = axlist
+        self.cid_zoom = fig.canvas.mpl_connect('motion_notify_event', self.on_zoom)
+    def on_zoom(self, event):
+        if event.inaxes:
+            xlim = event.inaxes.get_xlim()
+            ylim = event.inaxes.get_ylim()
+            for ax in self.axlist:
+                ax.set_xlim(xlim)
+                ax.set_ylim(ylim)
+            self.canvas.draw_idle()
+
+def torch_csr_to_scipy(A: torch.Tensor) -> sp.csr_matrix:
+    """"Convert matrix/linear forward model, as torch tensor, to scipy sparse matrix.
+        Arguments:
+            - A: torch tensor as matrix/forward model.
+        Returns:
+            - Scipy sparse matrix.
+    """
+    assert A.layout == torch.sparse_csr, f"A must be sparse_csr {type(A.layout)}"
+    m, n = A.shape
+    indptr = A.crow_indices().detach().cpu().numpy()   # length m+1
+    indices = A.col_indices().detach().cpu().numpy()   # length nnz
+    data = A.values().detach().cpu().numpy()           # length nnz
+
+    # (optional) SciPy prefers int32 for indices
+    if indices.dtype != np.int32: indices = indices.astype(np.int32, copy=False)
+    if indptr.dtype  != np.int32: indptr  = indptr.astype(np.int32,  copy=False)
+
+    sp_matrix = sp.csr_matrix((data, indices, indptr), shape=(m, n))
+
+    return sp_matrix 
+
+def torch_coo_to_scipy(A: torch.Tensor, to='csr'):
+    A = A.to_sparse_coo().coalesce()
+    m, n = A.shape
+    ij = A.indices().detach().cpu().numpy()            # shape [2, nnz]
+    data = A.values().detach().cpu().numpy()
+    row, col = ij[0], ij[1]
+    M = sp.coo_matrix((data, (row, col)), shape=(m, n))
+    return M.tocsr() if to == 'csr' else M
+
+def torch_sparse_to_scipy_csr(A: torch.Tensor) -> sp.csr_matrix:
+    """
+    Convert a PyTorch tensor (CSR/COO/dense) to SciPy csr_matrix.
+    - No densifying for sparse inputs.
+    - Handles CUDA tensors by moving index/data arrays to CPU.
+    """
+    m, n = A.shape
+
+    # Dense (strided) tensor
+    if A.layout == torch.strided:
+        return sp.csr_matrix(A.detach().cpu().numpy())
+
+    # Try CSR fast-path
+    try:
+        indptr  = A.crow_indices()   # only valid for CSR
+        indices = A.col_indices()
+        data    = A.values()
+    except (AttributeError, RuntimeError):
+        # Not CSR → go through COO safely
+        Acoo = A.to_sparse_coo().coalesce()
+        ij   = Acoo.indices().detach().cpu().numpy()  # [2, nnz]
+        row, col = ij[0].astype(np.int32, copy=False), ij[1].astype(np.int32, copy=False)
+        dat  = Acoo.values().detach().cpu().numpy()
+        return sp.coo_matrix((dat, (row, col)), shape=(m, n)).tocsr()
+    else:
+        # CSR build (ensure int32 indices for SciPy)
+        indptr_np  = indptr.detach().cpu().numpy().astype(np.int32, copy=False)
+        indices_np = indices.detach().cpu().numpy().astype(np.int32, copy=False)
+        data_np    = data.detach().cpu().numpy()
+        return sp.csr_matrix((data_np, indices_np, indptr_np), shape=(m, n))
