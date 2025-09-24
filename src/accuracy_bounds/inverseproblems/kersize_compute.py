@@ -2,7 +2,6 @@ import numpy as np
 import torch
 from scipy.sparse import csr_matrix, lil_matrix
 from joblib import Parallel, delayed
-from pdb import set_trace
 from .utils import projection_nullspace_operator
 
 # plain python versions

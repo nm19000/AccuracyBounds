@@ -2,15 +2,15 @@ from matplotlib import pyplot as plt
 import scipy.sparse as sp
 from scipy.sparse import load_npz
 import numpy as np  
-from accuracy_bounds.data.sentinel2 import SRDataset
+from data.sr_multispectral_satellite_data.sentinel2 import SRDataset
 from torch.utils.data import DataLoader
-from accuracy_bounds.inverseproblems.utils import torch_csr_to_scipy, torch_sparse_to_scipy_csr
+from .utils import torch_csr_to_scipy, torch_sparse_to_scipy_csr
 from accuracy_bounds.inverseproblems.kersize_compute_dataloader import (target_distances_samplingYX_perbatch_cuda,get_feasible_info,
     kersize_samplingYX,
     avgLB_samplingYX,
     avgkersize_samplingYX)
 
-from accuracy_bounds.utils.utils import ImgComparator, apply_upsampling, get_distance
+from .utils import apply_upsampling, ImgComparator, get_distance
 
 from scipy import sparse
 import os
