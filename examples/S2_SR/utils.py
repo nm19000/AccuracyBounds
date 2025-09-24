@@ -1,14 +1,11 @@
 import numpy as np
 import random
 import torch 
-from scipy.sparse import coo_matrix, csc_matrix
-from scipy.sparse.linalg import svds
 import scipy.sparse as sp
 import rasterio
 from rasterio.transform import from_origin
 import os
 from tqdm import tqdm
-from accuracy_bounds.inverseproblems.utils import apply_upsampling
 from typing import List, Optional, Union
 from abc import ABC, abstractmethod
 
