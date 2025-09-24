@@ -121,7 +121,7 @@ def worstcase_kernelsize(feasible_sets_list, p_1 ,p):
         - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
         - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
     Returns:
-        - worstcase_kersize: Approximate worst-case kernel size for a set of input data samples.
+        - worstcase_kersize: worst-case kernel size for a set of input data samples.
     """
     
     worstcase_kersize = 0
@@ -149,7 +149,7 @@ def worstcase_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
         - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
     
     Returns:
-        - worstcase_kersize: Approximate worst-case kernel size for a set of input data samples.
+        - worstcase_kersize: worst-case kernel size for a set of input data samples.
     """
     worstcase_kersize =0
 
@@ -171,7 +171,7 @@ def average_kernelsize(feasible_sets_list, p_1, p):
         - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
     
     Returns:
-        - average_kersize: Approximate worst-case kernel size for a set of input data samples.
+        - average_kersize: worst-case kernel size for a set of input data samples.
     """
    
     average_kersize = 0
@@ -207,7 +207,7 @@ def average_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
         - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
     
     Returns:
-        - average_kersize: Approximate average kernel size for a set of input data samples.
+        - average_kersize: average kernel size for a set of input data samples.
     """
 
     average_kersize_sym = 0
@@ -231,14 +231,82 @@ def average_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
 
 # cuda versions
 
-def wc_kernelsize_sym_crossbatch_cuda(A, F_null, batch1, batch2, p_X, p_Y, epsilon):
+def worstcase_kernelsize_perbatch_cuda(A, input_data, target_data, p_X, p_Y, epsilon, batch_size):
+    p = input_data.shape[0]
+    n_batches = p//batch_size
 
-    input1, target1 = batch1
-    input2,target2 = batch2
+    current_kersize = 0
+    for i in range(n_batches):
+        idx_imin = i*batch_size
+        idx_imax = min(idx_imin+ batch_size, p)
+        
+        batch_i_current = (input_data[idx_imin:idx_imax], target_data[idx_imin:idx_imax])
+        for j in range(i,n_batches):
+            idx_jmin = j*batch_size
+            idx_jmax = min(idx_jmin+ batch_size, p)
 
-    return wc_kernelsize_sym_batch_cuda(A, F_null, input1, target2, p_X = p_X, p_Y = p_Y, epsilon = epsilon )
+            batch_j_current = (input_data[idx_jmin:idx_jmax], target_data[idx_jmin:idx_jmax])
+            
+      
+            if i==j:
+                ks_batch = worstcase_kernelsize_batch_cuda(A, batch_i_current[0], batch_i_current[1], p_X = p_X, p_Y = p_Y, epsilon=epsilon)
+            else:
+                ks_batch = worstcase_kernelsize_crossbatch_cuda(A, batch_i_current, batch_j_current, p_X = p_X, p_Y = p_Y, epsilon=epsilon)
+            if ks_batch >current_kersize:
+                current_kersize = ks_batch
+    return current_kersize
 
-def wc_kernelsize_nosym_crossbatch_cuda(A, batch1, batch2, p_X, p_Y, epsilon):
+def worstcase_kernelsize_batch_cuda(A, input_data, target_data, p_X, p_Y, epsilon):
+    # Convert input_data to torch tensor and move to GPU if available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    x = torch.tensor(input_data, dtype=torch.float32, device=device)
+    n = x.shape[0]
+    # If x has shape (n, w, h, c, p), compute pairwise distances over all dimensions except the first
+    # Flatten all but the first dimension for distance computation
+    x_flat = x.reshape(n, -1)  # shape (n, D)
+    diff = x_flat.unsqueeze(1) - x_flat.unsqueeze(0)  # shape (n, n, D)
+    dist = torch.norm(diff, p=p_Y, dim=-1)  # shape (n, n)
+
+    same_feasible = dist<2*epsilon
+
+    # Now compute pairwise distances for target_data, but only where same_feasible is True
+    target = torch.tensor(target_data, dtype=torch.float32, device=device)
+    target_flat = target.reshape(target.shape[0], -1)  # shape (n, D)
+    target_diff = target_flat.unsqueeze(1) - target_flat.unsqueeze(0)  # shape (n, n, D)
+    target_dist = torch.norm(target_diff, p=p_X, dim=-1)  # shape (n, n)
+
+    # Mask target_dist with same_feasible, use nan instead of 0
+    masked_target_dist = torch.where(same_feasible, target_dist, torch.tensor(float('nan'), device=device))
+    return np.nanmax(masked_target_dist.cpu().numpy())
+
+'''
+We distinguish 2 kind of samplings : 
+- The first is that we sample int the Y space the input_data and we look at which x is in which feasible set. 
+    This one is denoted by samplingYX
+
+- The second one is that we sample in the X space only, and the forward it without noise (if possible, or at least without explicit noise vector) into the y space.
+    Then, we check which x,x' belong to a common feasible set.
+    This one is denoted by samplingX
+
+
+'''
+
+def worstcase_kernelsize_crossbatch_cuda(batch1, batch2, p_1, p_2, p, epsilon):
+    """
+    Computes the worst-case kernel size for touples from noisy inverse problem with a forward model with additive noise, target and input data batches.
+
+    Args:
+        - batch1: batch of input data and batch of target or ground truth data.
+        - batch1: batch of input data and batch of target or ground truth data.
+        - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
+        - p_2: Order of the norm on the target dataset $\mathcal{M}_2 = A(\mathcal{M}_1)+\mathcal{E}$. Set to p=2 for the ell 2 norm computation.
+        - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
+        - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
+    
+    Returns:
+        - worstcase_kersize: Worst-case kernel size for a set of input data samples.
+    """
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     input1, target1 = batch1
@@ -252,7 +320,7 @@ def wc_kernelsize_nosym_crossbatch_cuda(A, batch1, batch2, p_X, p_Y, epsilon):
     n2 = y2.shape[0]
     y2_flat = y2.reshape(n1, -1)
 
-    cross_dist = torch.norm(y1_flat[:,None,:]-y2_flat[None,:,:], dim = -1, p = p_Y)
+    cross_dist = torch.norm(y1_flat[:,None,:]-y2_flat[None,:,:], dim = -1, p = p_2)
     same_feasible = cross_dist< 2*epsilon
 
     x1 = torch.tensor(target1, dtype=torch.float32, device=device)
@@ -261,16 +329,29 @@ def wc_kernelsize_nosym_crossbatch_cuda(A, batch1, batch2, p_X, p_Y, epsilon):
     x2 = torch.tensor(target2, dtype=torch.float32, device=device)
     x2_flat = x2.reshape(n1, -1)
 
-    target_dists = torch.norm(x1_flat[:,None,:]-x2_flat[None,:,:], dim = -1, p = p_X)
+    target_dists = torch.norm(x1_flat[:,None,:]-x2_flat[None,:,:], dim = -1, p = p)
     masked_target_dist = torch.where(same_feasible, target_dists, torch.tensor(float('nan'), device=device))
 
     return np.nanmax(masked_target_dist.cpu().numpy())
 
-def wc_kernelsize_sym_perbatch_cuda(A, F_null, input_data, target_data, p_X, p_Y, epsilon, batch_size):
-    '''
+def worstcase_kernelsize_sym_perbatch_cuda(A, F_null, input_data, target_data, p_X, p_Y, epsilon, batch_size):
+    """
+    Computes the worst-case symmetric kernel size for touples from noisy inverse problem with a forward model with additive noise, target and input data batches.
+
+    Args:
+        - batch1: batch of input data and batch of target or ground truth data.
+        - batch1: batch of input data and batch of target or ground truth data.
+        - p_1: Order of the norm on the target dataset $\mathcal{M}_1$. Set to p=2 for the ell 2 norm computation.
+        - p_2: Order of the norm on the target dataset $\mathcal{M}_2 = A(\mathcal{M}_1)+\mathcal{E}$. Set to p=2 for the ell 2 norm computation.
+        - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
+        - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
+    
+    Returns:
+        - worstcase_kersize: Worst-case symmetric kernel size for a set of input data samples.
+    
     forwarded input has to be target_data@(A.T) , or equivalent. 
     It is frequently the same as input_data, but in the description of the algorithm, that is not necessary
-    '''
+    """
     p = input_data.shape[0]
     n_batches = p//batch_size
 
@@ -294,39 +375,22 @@ def wc_kernelsize_sym_perbatch_cuda(A, F_null, input_data, target_data, p_X, p_Y
             
       
             if i==j:
-                ks_batch = wc_kernelsize_sym_batch_cuda(A,F_null, batch_i_current[0], batch_i_current[1], p_X = p_X, p_Y = p_Y, epsilon=epsilon)
+                ks_batch = worstcase_kernelsize_sym_batch_cuda(A,F_null, batch_i_current[0], batch_i_current[1], p_X = p_X, p_Y = p_Y, epsilon=epsilon)
             else:
-                ks_batch = wc_kernelsize_sym_crossbatch_cuda(A, batch_i_current, batch_j_current, p_X = p_X, p_Y = p_Y, epsilon=epsilon)
+                ks_batch = worstcase_kernelsize_sym_crossbatch_cuda(A, batch_i_current, batch_j_current, p_X = p_X, p_Y = p_Y, epsilon=epsilon)
             if ks_batch >current_kersize:
                 current_kersize = ks_batch
     return current_kersize
 
-def wc_kernelsize_nosym_perbatch_cuda(A, input_data, target_data, p_X, p_Y, epsilon, batch_size):
-    p = input_data.shape[0]
-    n_batches = p//batch_size
+def worstcase_kernelsize_sym_crossbatch_cuda(A, F_null, batch1, batch2, p_X, p_Y, epsilon):
 
-    current_kersize = 0
-    for i in range(n_batches):
-        idx_imin = i*batch_size
-        idx_imax = min(idx_imin+ batch_size, p)
-        
-        batch_i_current = (input_data[idx_imin:idx_imax], target_data[idx_imin:idx_imax])
-        for j in range(i,n_batches):
-            idx_jmin = j*batch_size
-            idx_jmax = min(idx_jmin+ batch_size, p)
+    input1, target1 = batch1
+    input2,target2 = batch2
 
-            batch_j_current = (input_data[idx_jmin:idx_jmax], target_data[idx_jmin:idx_jmax])
-            
-      
-            if i==j:
-                ks_batch = wc_kernelsize_nosym_batch_cuda(A, batch_i_current[0], batch_i_current[1], p_X = p_X, p_Y = p_Y, epsilon=epsilon)
-            else:
-                ks_batch = wc_kernelsize_nosym_crossbatch_cuda(A, batch_i_current, batch_j_current, p_X = p_X, p_Y = p_Y, epsilon=epsilon)
-            if ks_batch >current_kersize:
-                current_kersize = ks_batch
-    return current_kersize
+    return worstcase_kernelsize_sym_batch_cuda(A, F_null, input1, target2, p_X = p_X, p_Y = p_Y, epsilon = epsilon )
 
-def wc_kernelsize_sym_batch_cuda(A, F_null, input_data, target_data, p_X, p_Y, epsilon):
+
+def worstcase_kernelsize_sym_batch_cuda(A, F_null, input_data, target_data, p_X, p_Y, epsilon):
     '''
     forwarded input has to be target_data@(A.T) , or equivalent. 
     It is frequently the same as input_data, but in the description of the algorithm, that is not necessary
@@ -364,42 +428,6 @@ def wc_kernelsize_sym_batch_cuda(A, F_null, input_data, target_data, p_X, p_Y, e
     # it seems that torch.einsum('pqd,md->pqm', x_e_concat, F_null) coule be used, but i don't master it. I mention it because it looks fancy
     target_dists = 2*torch.norm(Fy_projs, p = p_X,dim = -1)
     return np.nanmax(target_dists.cpu().numpy()) 
-
-def wc_kernelsize_nosym_batch_cuda(A, input_data, target_data, p_X, p_Y, epsilon):
-    # Convert input_data to torch tensor and move to GPU if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    x = torch.tensor(input_data, dtype=torch.float32, device=device)
-    n = x.shape[0]
-    # If x has shape (n, w, h, c, p), compute pairwise distances over all dimensions except the first
-    # Flatten all but the first dimension for distance computation
-    x_flat = x.reshape(n, -1)  # shape (n, D)
-    diff = x_flat.unsqueeze(1) - x_flat.unsqueeze(0)  # shape (n, n, D)
-    dist = torch.norm(diff, p=p_Y, dim=-1)  # shape (n, n)
-
-    same_feasible = dist<2*epsilon
-
-    # Now compute pairwise distances for target_data, but only where same_feasible is True
-    target = torch.tensor(target_data, dtype=torch.float32, device=device)
-    target_flat = target.reshape(target.shape[0], -1)  # shape (n, D)
-    target_diff = target_flat.unsqueeze(1) - target_flat.unsqueeze(0)  # shape (n, n, D)
-    target_dist = torch.norm(target_diff, p=p_X, dim=-1)  # shape (n, n)
-
-    # Mask target_dist with same_feasible, use nan instead of 0
-    masked_target_dist = torch.where(same_feasible, target_dist, torch.tensor(float('nan'), device=device))
-    return np.nanmax(masked_target_dist.cpu().numpy())
-
-'''
-We distinguish 2 kind of samplings : 
-- The first is that we sample int the Y space the input_data and we look at which x is in which feasible set. 
-    This one is denoted by samplingYX
-
-- The second one is that we sample in the X space only, and the forward it without noise (if possible, or at least without explicit noise vector) into the y space.
-    Then, we check which x,x' belong to a common feasible set.
-    This one is denoted by samplingX
-
-
-'''
-
 
 def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data, forwarded_target, p_X, p_Y, epsilon, batch_size):
     """
