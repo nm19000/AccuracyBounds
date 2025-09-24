@@ -365,6 +365,20 @@ def target_distances_samplingYX_perbatch_cuda(input_data, target_data, forwarded
 
     return distsXX, feasible_appartenance
 
+def compute_max_distance(y_idx, fa, dXX):
+    # Extract valid indices where feasible_appartenance[:, y_idx] is non-zero
+    valid_idx = fa[:, y_idx].nonzero()[0]
+        
+    if len(valid_idx) == 0:
+        return 0
+        
+    # Extract the submatrix from distsXX using valid indices
+    subdistXX = dXX[valid_idx, :][:, valid_idx]
+    subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
+        
+    # Compute the maximum distance
+    distmax = np.nanmax(subdistXX)
+    return distmax
 
 def kersize_samplingYX(distsXX, feasible_appartenance,p_X):
     """
@@ -378,21 +392,6 @@ def kersize_samplingYX(distsXX, feasible_appartenance,p_X):
     Returns:
         float: Kersize.
     """
-    def compute_max_distance(y_idx, fa, dXX):
-        # Extract valid indices where feasible_appartenance[:, y_idx] is non-zero
-        valid_idx = fa[:, y_idx].nonzero()[0]
-        
-        if len(valid_idx) == 0:
-            return 0
-        
-        # Extract the submatrix from distsXX using valid indices
-        subdistXX = dXX[valid_idx, :][:, valid_idx]
-        subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
-        
-        # Compute the maximum distance
-        distmax = np.nanmax(subdistXX)
-        return distmax
-    
 
     n,p = feasible_appartenance.shape
     #distsXX = np.asarray(distsXX.to_dense())
@@ -401,6 +400,20 @@ def kersize_samplingYX(distsXX, feasible_appartenance,p_X):
     
 
     return np.nanmax(np.array(list(results)))
+
+def compute_mean_distance(y_idx, fa, dXX, P_X):
+    # Extract valid indices where feasible_appartenance[:, y_idx] is non-zero
+    valid_idx = fa[:, y_idx].nonzero()[0]
+        
+    if len(valid_idx) == 0:
+        return 0
+        
+    # Extract the submatrix from distsXX using valid indices
+    subdistXX = dXX[valid_idx, :][:, valid_idx]
+    subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
+        
+    size_feas = len(valid_idx)
+    return 2*np.nanmean(subdistXX**p_X)
 
 def avgLB_samplingYX(distsXX, feasible_appartenance, p_X):
     """
@@ -414,26 +427,26 @@ def avgLB_samplingYX(distsXX, feasible_appartenance, p_X):
     Returns:
         float: Average lower bound of feasible pairwise distances.
     """
-    def compute_mean_distance(y_idx, fa, dXX):
-        # Extract valid indices where feasible_appartenance[:, y_idx] is non-zero
-        valid_idx = fa[:, y_idx].nonzero()[0]
-        
-        if len(valid_idx) == 0:
-            return 0
-        
-        # Extract the submatrix from distsXX using valid indices
-        subdistXX = dXX[valid_idx, :][:, valid_idx]
-        subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
-        
-        size_feas = len(valid_idx)
-        return 2*np.nanmean(subdistXX**p_X)
-
-
 
     n,p = feasible_appartenance.shape
     results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in range(p))
 
     return np.nanmean(np.asarray(list(results)))/(2**p_X)
+
+def compute_mean_distance(y_idx, fa, dXX, p_X):
+    # Extract valid indices where feasible_appartenance[:, y_idx] is non-zero
+    valid_idx = fa[:, y_idx].nonzero()[0]
+        
+    if len(valid_idx) == 0:
+        return 0
+        
+    # Extract the submatrix from distsXX using valid indices
+    subdistXX = dXX[valid_idx, :][:, valid_idx]
+    subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
+        
+    size_feas = len(valid_idx)
+    return 2*np.nanmean(subdistXX**p_X)
+
 
 def avgkersize_samplingYX(distsXX, feasible_appartenance, p_X):
     """
@@ -447,21 +460,6 @@ def avgkersize_samplingYX(distsXX, feasible_appartenance, p_X):
     Returns:
         float: Average kernel size.
     """
-    def compute_mean_distance(y_idx, fa, dXX):
-        # Extract valid indices where feasible_appartenance[:, y_idx] is non-zero
-        valid_idx = fa[:, y_idx].nonzero()[0]
-        
-        if len(valid_idx) == 0:
-            return 0
-        
-        # Extract the submatrix from distsXX using valid indices
-        subdistXX = dXX[valid_idx, :][:, valid_idx]
-        subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
-        
-        size_feas = len(valid_idx)
-        return 2*np.nanmean(subdistXX**p_X)
-    
-
 
     n,p = feasible_appartenance.shape
     results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in range(p))
