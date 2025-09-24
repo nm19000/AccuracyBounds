@@ -401,22 +401,7 @@ def apply_square_op_full(Op_mat, img, out_2D_shape_op, border = 4):
     return OP_img
 
 
-class ImgComparator:
-    def __init__(self, fig, axlist = None):
-        self.canvas = fig.canvas
-        if axlist is None:
-            self.axlist = fig.axes
-        else:
-            self.axlist = axlist
-        self.cid_zoom = fig.canvas.mpl_connect('motion_notify_event', self.on_zoom)
-    def on_zoom(self, event):
-        if event.inaxes:
-            xlim = event.inaxes.get_xlim()
-            ylim = event.inaxes.get_ylim()
-            for ax in self.axlist:
-                ax.set_xlim(xlim)
-                ax.set_ylim(ylim)
-            self.canvas.draw_idle()
+
 
 
 
