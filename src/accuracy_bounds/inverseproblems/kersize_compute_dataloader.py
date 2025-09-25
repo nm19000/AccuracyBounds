@@ -2,24 +2,49 @@ import torch
 from joblib import Parallel, delayed
 import numpy as np
 from tqdm import tqdm
+import time
 from torch.utils.data import DataLoader, SequentialSampler
-from .feasible_sets import compute_feasible_set_linear_forwardmodel
-from .utils import projection_nullspace_operator
+import faiss
+from scipy import sparse
 
-
-def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
+def compute_feasible_set(A, input_data_point, target_data, p, epsilon):
     """
-    Implements the iterative algorithm for diameter estimation of the feasible set for a noisy inverse problem. 
-    Computes diameter based on possible target data points for one input point.
-    
-    Args:
+    Implements the iterative algorithm for estimating feasible sets for one input point based on possible target data points for a noisy inverse problem. 
+        Arguments:
         - A: The matrix (for which we are computing the Moore-Penrose inverse) of the inverse problem input_data = A(target_data)+noise.
         - input_data_point: Input data point, referred to as "y" in variable names, for an approximate inverse method.
         - target_data: Target or ground truth data for an approximate inverse method.
         - p: order of the norm, default p=2 for MSE computation.
         - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
 
-    Returns:
+        Returns:
+        - feas_set_approx: approximation to the feasible set, consisting of all target data points that can map to an input data point within the noise level.
+    """
+
+    # Step 2: Compute feasible set for input data point y
+    feas_set_y = []
+
+    for x_n in target_data:
+        e_n = input_data_point - torch.dot(A,x_n) # Compute noise vector
+
+        if torch.linalg.norm(e_n,p) <= epsilon:  # Check if noise is below noiselevel
+            # add traget data point x_n to feasible set
+            feas_set_y.append(x_n)
+
+    return feas_set_y
+
+def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
+    """
+    Implements the iterative algorithm for diameter estimation of the feasible set for a noisy inverse problem. 
+    Computes diameter based on possible target data points for one input point.
+        Arguments:
+        - A: The matrix (for which we are computing the Moore-Penrose inverse) of the inverse problem input_data = A(target_data)+noise.
+        - input_data_point: Input data point, referred to as "y" in variable names, for an approximate inverse method.
+        - target_data: Target or ground truth data for an approximate inverse method.
+        - p: order of the norm, default p=2 for MSE computation.
+        - epsilon: Noise level in the inverse problem input_data = A(target_data)+noise.
+
+        Returns:
         - diameter_mean_y, num_feas, max_diam_Fy: diameter_mean_y of dim(0)= shape(input_data), the estimated mean diameter of the feasible set, 
                                         consisting of all possible target data points, for one input point.
                                         num_feas is the number of samples in the feasible set and will be used for statistics later on.
@@ -28,7 +53,7 @@ def diams_feasibleset_inv(A, input_data_point, target_data, p, epsilon):
     """
 
     # Step 2: Compute feasible sets and diameters
-    feas_set_y = compute_feasible_set_linear_forwardmodel(A, input_data_point, target_data, p, epsilon)
+    feas_set_y = compute_feasible_set(A, input_data_point, target_data, p, epsilon)
     max_diam_Fy = 0
     diameter_mean_y = 0
     diam_y = []
@@ -366,11 +391,6 @@ def avgLB_sym_samplingYX(null_norms, p):
 
 
 
-
-
-
-
-
 def insert_no_overlap_keep_A(A_coo, B_csr):
     A = A_coo.coalesce()
     B = B_csr.to_sparse_coo()
@@ -409,6 +429,65 @@ def sparse_block(A, i0, i1, j0, j1, out_layout="coo"):
     return B if out_layout == "coo" else B.to_sparse_csr()
 
 #TODO : allow any custom norm in the distance computation (not only the normm p)
+
+def target_distances_samplingYX_precomputedFA_cuda_V2(A, target_data, feasible_appartenance, p_X, batchsize):
+    '''
+    Same as target_distances_samplingYX_perbatch_cuda but here, the feasible appartenance matrix is precomputed
+    '''
+    assert isinstance(target_data, DataLoader), 'Data input is only supported as Dataloader'
+    #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
+    assert isinstance(target_data.sampler, SequentialSampler) \
+           ,'Dataloaders with Random samplers are not supported'
+    
+    n_target = len(target_data.dataset)
+  
+
+    common_feasible = feasible_appartenance@(feasible_appartenance.transpose(0, 1))
+
+    # First get the non zero indexes of common_feasible as a n,2 shaped array
+    from pdb import set_trace
+    nonzero_indices = common_feasible.indices().numpy()
+    index_array = np.vstack(nonzero_indices).T
+
+    n_indexes = index_array.shape[0]
+
+    if n_indexes %batchsize == 0:
+        n_batches = n_indexes//batchsize
+    else:
+        n_batches = (n_indexes//batchsize)+1
+
+    all_distances = []
+    # Then Iterate batchwise manually over the nonzero indices
+    for i_batch in range(n_batches):
+        print(f"Target Batch: [{i_batch+1} / {n_batches}], ", end="\r")
+
+        start_idx = i_batch * batchsize
+        end_idx = min((i_batch+1)*batchsize, n_indexes)
+
+        batch_indices = index_array[start_idx:end_idx, :]
+
+        # Load in X1 the vectors corresponding to the left index, and in X2 for the right index
+        len_batch = batch_indices.shape[0]
+        X1, X2 = [], []
+        for i in range(len_batch):
+            X1.append(target_data.dataset[batch_indices[i,0]]['img'])
+            X2.append(target_data.dataset[batch_indices[i,1]]['img'])
+        X1 = torch.stack(X1)
+        X2 = torch.stack(X2)
+        # Compute the norm of the difference for the batch
+        distances_batch = torch.norm(X1-X2, p = p_X, dim = -1)
+        # append to all_distances
+        all_distances.append(distances_batch)
+
+    #concatenate all the distances
+    all_distances = torch.concatenate(all_distances)
+
+    # Insert the distances into the 2d pairwise distances sparse tensor
+    distsXX = torch.sparse_coo_tensor(indices=index_array.transpose(), values = all_distances, size=(n_target, n_target))
+
+    return distsXX, feasible_appartenance
+
+    
 
 def target_distances_samplingYX_precomputedFA_perbatch_cuda(A, target_data1, target_data2, feasible_appartenance, p_X):
     '''
@@ -458,7 +537,6 @@ def target_distances_samplingYX_precomputedFA_perbatch_cuda(A, target_data1, tar
             distsXX = insert_no_overlap_keep_A(distsXX, dists_small)
     return distsXX, feasible_appartenance
     
-
 
 def target_distances_samplingYX_perbatch_cuda(A, input_data, target_data1, target_data2, forwarded_target, p_X, p_Y, epsilon):
     """
@@ -615,9 +693,54 @@ def distsXX_samplingYX_batch_cuda(A, target_data1, target_data2 , p_X):
     x1_flat = target_data1.flatten(start_dim=1)
     x2_flat = target_data2.flatten(start_dim=1)
 
-    distancesXX = torch.norm(x1_flat[:,None, :]-x2_flat[None,:,:], p = p_X, dim = -1)
+    #distancesXX = torch.norm(x1_flat[:,None, :]-x2_flat[None,:,:], p = p_X, dim = -1)
+    distancesXX = torch.cdist(x1_flat, x2_flat, p = p_X)
 
     return distancesXX
+
+def feasibleApp_samplingYX_perbatch_cuda(A, input_data, forwarded_target, p_Y, epsilon):
+    assert isinstance(input_data, DataLoader) and isinstance(forwarded_target, DataLoader) , 'Data input is only supported as Dataloader'
+    #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
+    assert isinstance(input_data.sampler, SequentialSampler) and \
+           isinstance(forwarded_target, DataLoader) and \
+           'Dataloaders with Random samplers are not supported'
+
+    n_input = len(input_data.dataset)
+    n_target = len(forwarded_target.dataset)
+
+    feasible_appartenance = torch.sparse_coo_tensor(indices=torch.empty((2, 0), dtype=torch.long),  # no nonzero entries yet
+                            values=torch.tensor([], dtype=torch.float32),
+                            size=(n_target, n_input))
+    
+
+    for target_batch_id, target_batch in enumerate(forwarded_target):
+
+        for input_batch_id, input_batch in enumerate(input_data):
+            print(f"Target Batch: [{target_batch_id+1} / {len(forwarded_target)}],     Input Batch: [{input_batch_id+1} / {len(input_data)}]                    ", end="\r")
+                
+            feasible_small = feasibleApp_samplingYX_batch_cuda(A, input_batch["img"], target_batch["img"], p_Y, epsilon)
+            feasible_small = feasible_small.to_sparse_csr()
+
+            batch_size_target = target_batch["img"].shape[0]
+            batch_size_input = input_batch["img"].shape[0]
+
+            # TODO: what if batchsize is not always the same? e.g. drop_last = False
+            idx_imin = batch_size_target * target_batch_id
+            idx_imax = batch_size_target * (target_batch_id + 1)
+
+            idx_jmin = batch_size_input * input_batch_id
+            idx_jmax = batch_size_input * (input_batch_id + 1)
+
+            i0, i1 = idx_imin, idx_imax
+            j0, j1 = idx_jmin, idx_jmax
+
+            feasible_small = offset_csr_block(feasible_small.to_sparse_csr(), i0, j0, (n_target, n_target))
+
+            feasible_appartenance = insert_no_overlap_keep_A(feasible_appartenance, feasible_small.detach().cpu())
+
+    #print(feasible_appartenance.data.nbytes/(1024*1024), f'size data {feasible_appartenance.shape}') 
+    feasible_appartenance = feasible_appartenance.to_sparse_coo()
+    return feasible_appartenance
 
 def feasibleApp_samplingYX_batch_cuda(A, input_data, forwarded_target, p_Y, epsilon):
     """
@@ -632,7 +755,7 @@ def feasibleApp_samplingYX_batch_cuda(A, input_data, forwarded_target, p_Y, epsi
     Returns:
         torch.ndarray: Boolean matrix indicating feasibility (shape: [forwarded_target, input_data]).
     """
-   
+    from pdb import set_trace
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     forwarded_target = torch.tensor(forwarded_target, dtype = torch.float32, device = device)
     input_data = torch.tensor(input_data, dtype = torch.float32, device = device)
@@ -642,11 +765,55 @@ def feasibleApp_samplingYX_batch_cuda(A, input_data, forwarded_target, p_Y, epsi
     input_data_flat = torch.tensor(input_data.reshape(n,-1), device = device)
     forwarded_flat = torch.tensor(forwarded_target.reshape(m,-1),device = device)
 
-    e_diff = -forwarded_flat[:,None, :] + input_data_flat[None,:,:]
+    feasible_appartenance = torch.cdist(forwarded_flat, input_data_flat, p = p_Y)<epsilon
 
-    feasible_appartenance = torch.norm(e_diff,p = p_Y, dim = -1)<epsilon
+    #e_diff = -forwarded_flat[:,None, :] + input_data_flat[None,:,:]
+
+    #feasible_appartenance = torch.norm(e_diff,p = p_Y, dim = -1)<epsilon
 
     return feasible_appartenance # feasible appartenance is y vs x
+
+
+def feasibleApp_samplingYX_faiss(input_data, target_data, forwarded_target, p_X, p_Y, epsilon):
+    from pdb import set_trace
+    # Compute the feasibility appartenance matrix
+    d_input = torch.flatten(input_data.__getitem__(0)).shape[0]
+    index_input = faiss.IndexFlatL2(d_input)
+
+    m_input = input_data.__len__()
+    n_target = target_data.__len__()
+
+    feasible_appartenance = sparse.lil_matrix((n_target, m_input),dtype=int)
+
+    # We iterate per batches
+    # We want to avoid double loops in dataloading
+    # The point of iteraing over batches is not to store the whole distance matrix all at once. 
+    #       We only store the binary sparse matrix all at once.
+    # Because we can have datasets up to 10 000 000 elements
+
+    # Load the whole dataset in one index (for inputs)
+
+    for input_batch_id, input_batch in enumerate(input_data):
+        input_vectors = input_batch['img']
+        input_vectors = input_vectors.reshape(input_vectors.shape[0], -1).cpu().numpy()
+        index_input.add(input_vectors)
+    
+    for target_batch_id, target_batch in enumerate(forwarded_target):
+        forwarded_target_vectors = target_batch['img']
+        forwarded_target_vectors = forwarded_target_vectors.reshape(forwarded_target_vectors.shape[0], -1).cpu().numpy()
+
+
+        distances, neighbors = index_input.search(forwarded_target_vectors, n_target) 
+        similarity_matrix = (distances < epsilon).astype(int)
+
+        # Convert similarity_matrix to a scipy.sparse.lil_matrix
+        similarity_lil = sparse.lil_matrix(similarity_matrix)
+        # Store in feasible_appartenance at the correct rows (targets) and columns (inputs)
+        row_offset = target_batch_id * forwarded_target_vectors.shape[0]
+        feasible_appartenance[row_offset:row_offset + forwarded_target_vectors.shape[0], :] = similarity_lil
+        set_trace()
+    return feasible_appartenance
+
 
 def get_feasible_info(distsXX,feasible_appartenance):
     # Get the information of each F_y : diam(F_y), the indexes of elements corresponding to diam(F_y), the cardinal of F_y
@@ -927,3 +1094,56 @@ def kersize_samplingX(masked_target_dists):
     """
     return np.nanmax(masked_target_dists)
 
+
+if __name__ =='__main__':
+
+    class RandomDataset(torch.utils.data.Dataset):
+        def __init__(self, data_array, suffix):
+            if suffix == 'x':
+                self.data = data_array
+            elif suffix == 'y':
+                self.data = data_array[:,:2]
+
+        def __len__(self):
+            return len(self.data)
+
+        def __getitem__(self, idx):
+            return {'idx': idx, 'img': self.data[idx]}
+        
+
+    # Parameters
+    n = 10000  # Number of vectors in dataset
+    epsilon = 0.039  # Distance threshold for similarity
+    batch_size = 1000  # Batch size for DataLoader
+
+    data_3D = torch.randn(n, 3).float()
+    data_3D = data_3D / data_3D.norm(dim=1, keepdim=True) # Random points on the unit sphere
+
+    # Create datasets and dataloaders for dataset1 and dataset2
+    dataset_3D = RandomDataset(data_array= data_3D,suffix='x')
+    dataset_proj = RandomDataset(data_array=data_3D, suffix='y')
+
+
+    dataloader_3D = DataLoader(dataset_3D, batch_size=batch_size, shuffle=False)
+    dataloader_3D_2 = DataLoader(dataset_3D, batch_size=batch_size, shuffle=False)
+    dataloader_proj = DataLoader(dataset_proj, batch_size=batch_size, shuffle=False)
+    dataloader_forwarded3D = DataLoader(dataset_proj, batch_size=batch_size, shuffle=False)
+
+    feas_app = feasibleApp_samplingYX_perbatch_cuda(0, dataloader_proj, dataloader_forwarded3D, p_Y=2, epsilon=epsilon)
+    t0 = time.time()
+    distsXX_new, feas_app_new = target_distances_samplingYX_precomputedFA_cuda_V2(0, dataloader_3D, feas_app, p_X = 1, batchsize=10000)
+    t1 = time.time()
+    distsXX_old, feas_app_old = target_distances_samplingYX_precomputedFA_perbatch_cuda(0,dataloader_3D, dataloader_3D_2, feas_app, p_X = 1)
+    t2 = time.time()
+    print(f'Time taken for the new method= {np.round(t1-t0, 3)} seconds')
+    print(f'Time taken for the old method= {np.round(t2-t1, 3)} seconds')
+
+    h,w = feas_app.shape
+    print(f'Sparsity ratio of feasible apprtenance = {feas_app.sum()/(h*w)}')
+    print(torch.norm(distsXX_old.to_dense())**2)  
+    print(torch.norm(distsXX_new.to_dense())**2)  
+
+    from pdb import set_trace
+    set_trace()
+    
+    #feasible_appartenance = feasibleApp_samplingYX_faiss(dataloader_proj, dataloader_3D, dataloader_forwarded3D, p_X)
