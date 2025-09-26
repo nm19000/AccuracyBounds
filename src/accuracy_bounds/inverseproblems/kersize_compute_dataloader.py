@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import time
 from torch.utils.data import DataLoader, SequentialSampler
-#import faiss
+import faiss
 from scipy import sparse
 
 
