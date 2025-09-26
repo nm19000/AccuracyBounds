@@ -1,13 +1,10 @@
 import numpy as np
-import torch
-from scipy.sparse import csr_matrix, lil_matrix
-from joblib import Parallel, delayed
 from .utils import projection_nullspace_operator
 
 # plain python versions
 
 def diams_feasibleset(feasible_set_y, p_1 ,p):
-    """
+    """ 
     Implements computation of the diameter of the feasible set for a inverse problem. 
     Computes diameter based on a feasible set for one measurement or also input data point.
     
