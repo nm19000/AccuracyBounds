@@ -13,8 +13,8 @@ sys.path.append('../../../opensr-test')
 sys.path.append('../../../opensr-test/opensr_test')
 sys.path.append('../../src/inverseproblems')
 
-from opensr_test.config import Config
-from opensr_test.main import Metrics
+#from opensr_test.config import Config
+#from opensr_test.main import Metrics
 
 from pdb import set_trace
 import json
@@ -578,9 +578,9 @@ if __name__ == '__main__':
 
 
     if computeDS:
-        A_sparse = OP_calculator.build_sparse_matrix_parallel()
-        sparse.save_npz('DS_op_32.npz', A_sparse)
-    else:
+        #A_sparse = OP_calculator.build_sparse_matrix_parallel()
+        #sparse.save_npz('DS_op_32.npz', A_sparse)
+    #else:
         A_sparse = load_npz('../Operators/DS_op_32.npz')
         F_sparse = hstack([A_sparse, identity(A_sparse.shape[0], format='csc')], format='csc')
         #sparse.save_npz('F_op_32.npz', F_sparse)
@@ -591,29 +591,29 @@ if __name__ == '__main__':
     
         if True:
             # Compute null space basis (sparse-aware)
-            range_basis = OP_calculator.get_range_space_basis(A_sparse, sigma_threshold_ratio=0.0001)
+            #range_basis = OP_calculator.get_range_space_basis(A_sparse, sigma_threshold_ratio=0.0001)
 
             # Build projection operator onto null space (as a LinearOperator, which is memory efficient)
-            P_null = OP_calculator.make_null_projection_operator(range_basis)
+            #P_null = OP_calculator.make_null_projection_operator(range_basis)
 
-            np.save('P_null_32.npy', P_null)
-        else:
+            #np.save('P_null_32.npy', P_null)
+        #else:
             # Compute null space basis (sparse-aware)
-            range_basis = OP_calculator.get_range_space_basis(F_sparse)
+            #range_basis = OP_calculator.get_range_space_basis(F_sparse)
 
             # Build projection operator onto null space (as a LinearOperator, which is memory efficient)
-            P_null = OP_calculator.make_null_projection_operator(range_basis)
+            #P_null = OP_calculator.make_null_projection_operator(range_basis)
 
-            np.save('F_null_32.npy', P_null)
+            #np.save('F_null_32.npy', P_null)
 
-    P_null = np.load('../Operators/P_null_32.npy')
-    F_null = np.load('../Operators/F_null_32.npy')
+    #P_null = np.load('../Operators/P_null_32.npy')
+   # F_null = np.load('../Operators/F_null_32.npy')
 
-    w,h = P_null.shape
-    F_null_restricted = F_null[:w, :h]
+   # w,h = P_null.shape
+   # F_null_restricted = F_null[:w, :h]
 
 
-    if plot_sparsity:
+    #if plot_sparsity:
         if computeDS or compute_P_null:
             plt.spy(A_sparse, markersize=1)
             plt.title("Sparsity pattern of A")
