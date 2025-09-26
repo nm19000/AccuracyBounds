@@ -8,10 +8,6 @@ from accuracy_bounds.inverseproblems.feasible_sets import (
 )
 
 from accuracy_bounds.inverseproblems.kersize_compute import (
-    worstcase_kernelsize_batch_cuda, 
-    worstcase_kernelsize_sym_batch_cuda,
-    worstcase_kernelsize_perbatch_cuda, 
-    worstcase_kernelsize_crossbatch_cuda,
     average_kernelsize,
     worstcase_kernelsize,
     average_kernelsize_sym,
@@ -31,10 +27,6 @@ __all__ = (
     "projection_nullspace",
     "projection_nullspace_operator",
     "compute_feasible_set_linear_forwardmodel",
-    "worstcase_kernelsize_batch_cuda", 
-    "worstcase_kernelsize_sym_batch_cuda",
-    "worstcase_kernelsize_perbatch_cuda", 
-    "worstcase_kernelsize_crossbatch_cuda",
     "average_kernelsize",
     "worstcase_kernelsize",
     "average_kernelsize_sym",
