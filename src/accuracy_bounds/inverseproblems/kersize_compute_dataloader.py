@@ -4,7 +4,6 @@ import numpy as np
 from tqdm import tqdm
 import time
 from torch.utils.data import DataLoader, SequentialSampler
-#import faiss
 from scipy import sparse
 
 
@@ -421,46 +420,6 @@ def feasibleApp_samplingYX_batch_cuda(A, input_data, forwarded_target, p_Y, epsi
     return feasible_appartenance # feasible appartenance is y vs x
 
 
-def feasibleApp_samplingYX_faiss(input_data, target_data, forwarded_target, p_X, p_Y, epsilon):
-    from pdb import set_trace
-    # Compute the feasibility appartenance matrix
-    d_input = torch.flatten(input_data.__getitem__(0)).shape[0]
-    index_input = faiss.IndexFlatL2(d_input)
-
-    m_input = input_data.__len__()
-    n_target = target_data.__len__()
-
-    feasible_appartenance = sparse.lil_matrix((n_target, m_input),dtype=int)
-
-    # We iterate per batches
-    # We want to avoid double loops in dataloading
-    # The point of iteraing over batches is not to store the whole distance matrix all at once. 
-    #       We only store the binary sparse matrix all at once.
-    # Because we can have datasets up to 10 000 000 elements
-
-    # Load the whole dataset in one index (for inputs)
-
-    for input_batch_id, input_batch in enumerate(input_data):
-        input_vectors = input_batch['img']
-        input_vectors = input_vectors.reshape(input_vectors.shape[0], -1).cpu().numpy()
-        index_input.add(input_vectors)
-    
-    for target_batch_id, target_batch in enumerate(forwarded_target):
-        forwarded_target_vectors = target_batch['img']
-        forwarded_target_vectors = forwarded_target_vectors.reshape(forwarded_target_vectors.shape[0], -1).cpu().numpy()
-
-
-        distances, neighbors = index_input.search(forwarded_target_vectors, n_target) 
-        similarity_matrix = (distances < epsilon).astype(int)
-
-        # Convert similarity_matrix to a scipy.sparse.lil_matrix
-        similarity_lil = sparse.lil_matrix(similarity_matrix)
-        # Store in feasible_appartenance at the correct rows (targets) and columns (inputs)
-        row_offset = target_batch_id * forwarded_target_vectors.shape[0]
-        feasible_appartenance[row_offset:row_offset + forwarded_target_vectors.shape[0], :] = similarity_lil
-        set_trace()
-    return feasible_appartenance
-
 
 def get_feasible_info(distsXX,feasible_appartenance):
     # Get the information of each F_y : diam(F_y), the indexes of elements corresponding to diam(F_y), the cardinal of F_y
@@ -793,4 +752,4 @@ if __name__ =='__main__':
     from pdb import set_trace
     set_trace()
     
-    #feasible_appartenance = feasibleApp_samplingYX_faiss(dataloader_proj, dataloader_3D, dataloader_forwarded3D, p_X)
+ 
