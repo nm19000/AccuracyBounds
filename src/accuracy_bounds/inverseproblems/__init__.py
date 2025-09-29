@@ -1,6 +1,5 @@
 from .utils import (
     projection_nullspace,
-<<<<<<< HEAD
     projection_nullspace_operator
 )
 
@@ -22,13 +21,10 @@ from .kersize_compute_dataloader import (
     kersize_samplingYX,
     avgLB_samplingYX,
     avgkersize_samplingYX
-=======
->>>>>>> main
 )
 
 __all__ = (
     "projection_nullspace",
-<<<<<<< HEAD
     "projection_nullspace_operator",
     "compute_feasible_set_linear_forwardmodel",
     "average_kernelsize",
@@ -41,7 +37,5 @@ __all__ = (
     "kersize_samplingYX",
     "avgLB_samplingYX",
     "avgkersize_samplingYX"
-=======
->>>>>>> main
 )
 
