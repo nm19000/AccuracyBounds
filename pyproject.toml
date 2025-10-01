@@ -18,6 +18,11 @@ dependencies = [
     "pdoc",
     "numpy",
     "torch",
+    "tqdm",
+    "joblib",
+    "time",
+    "scipy",
+    "multi_processing",
 ]
 
 [build-system]
