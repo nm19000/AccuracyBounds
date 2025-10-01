@@ -38,8 +38,3 @@ addopts = "-ra -q"
 testpaths = [
     "test",
 ]
-
-dependencies = [
-  "numpy>=1.26",
-  "pytorch>=2.0"
-]
