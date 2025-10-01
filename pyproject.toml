@@ -22,7 +22,7 @@ dependencies = [
     "joblib",
     "time",
     "scipy",
-    "multi_processing",
+    "multiprocessing",
 ]
 
 [build-system]
