@@ -1,5 +1,5 @@
 [project]
-name = "accuracy-bounds"
+name = "accuracy_bounds"
 version = "0.0.1"
 authors = [
   { name = "FirstName LastName", email = "firstname.lastname@dlr.de" },
