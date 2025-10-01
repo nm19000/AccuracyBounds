@@ -16,6 +16,8 @@ dependencies = [
     "pytest",
     "click",
     "pdoc",
+    "numpy",
+    "torch",
 ]
 
 [build-system]
