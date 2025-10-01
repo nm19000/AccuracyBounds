@@ -31,3 +31,10 @@ where = ["src"]
 [project.urls]
 Homepage = "https://github.com/nm190000/AccuracyBounds"
 Issues = "https://github.com/nm190000/AccuracyBounds"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "test",
+]
