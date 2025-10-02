@@ -1,7 +1,6 @@
 import numpy as np
 import random
 import torch 
-import scipy.sparse as sp
 import rasterio
 from rasterio.transform import from_origin
 import os
@@ -222,6 +221,7 @@ class Struct(DistanceMetric):
         sam_score = torch.clamp(dot_product / (preds_norm * target_norm), -1, 1).acos()
         return torch.rad2deg(sam_score)
 
+
 def depatchify(patched_image, patch_size):
     h,w = patched_image.shape
     x_coords = list(range(0,h,patch_size))
@@ -404,51 +404,6 @@ def apply_square_op_full(Op_mat, img, out_2D_shape_op, border = 4):
     return OP_img
 
 
-class ImgComparator:
-    def __init__(self, fig, axlist = None):
-        self.canvas = fig.canvas
-        if axlist is None:
-            self.axlist = fig.axes
-        else:
-            self.axlist = axlist
-        self.cid_zoom = fig.canvas.mpl_connect('motion_notify_event', self.on_zoom)
-    def on_zoom(self, event):
-        if event.inaxes:
-            xlim = event.inaxes.get_xlim()
-            ylim = event.inaxes.get_ylim()
-            for ax in self.axlist:
-                ax.set_xlim(xlim)
-                ax.set_ylim(ylim)
-            self.canvas.draw_idle()
-
-
-
-# Function to apply matrix transformation A to points
-def apply_forwardmodel(A, points):
-    return np.dot(points, A.T)
-
-def projection_nullspace_operator(A):
-    """Compute the matrix for projecting onto the null space of a matrix A, i.e. P_{N(A)}= (I - A^dagger A)
-    Args: 
-        - A: matrix 
-    Returns:
-        - project_ns: matrix projecting onto the null space of A.
-    """
-    A_dagger = np.linalg.pinv(A)
-    project_ns= np.eye(A.shape[1]) - np.dot(A_dagger, A)
-    return project_ns
-
-
-def projection_nullspace(A, x):
-    """
-        Compute the projection of a point x onto the null space of A, i.e., P_{N(A)}(x).
-        This is equivalent to (I - A^dagger A) x usin the function projection_nullspace for computing P_{N(A)} from A.
-    """
-    project_ns = projection_nullspace_operator(A)
-    x_ns = np.dot(project_ns,x)
-    
-    return x_ns
-
 
 def set_seed(seed):
     random.seed(seed)
@@ -584,6 +539,44 @@ def apply_upsampling(x: torch.Tensor, scale: int) -> torch.Tensor:
 
     return x_ref
 
+def bilinear_SR(x:torch.tensor, scale:int)-> torch.Tensor:
+    """Upsampling a tensor (B, C, H, W) to a higher resolution
+    (B, C, H', W') using bilinear interpolation with antialiasing.
+
+    Args:
+        x (torch.Tensor): The tensor to upsample.
+        scale (int, optional): The super-resolution scale. Defaults
+            to 4.
+
+    Returns:
+        torch.Tensor: The upsampled tensor (B, C, H', W').
+    """
+
+    x_ref = torch.nn.functional.interpolate(
+        input=x[None], scale_factor=scale, mode="bilinear", antialias=True
+    ).squeeze()
+
+    return x_ref
+
+def bicubic_SR(x:torch.tensor, scale:int)-> torch.Tensor:
+    """Upsampling a tensor (B, C, H, W) to a higher resolution
+    (B, C, H', W') using bicubic interpolation with antialiasing.
+
+    Args:
+        x (torch.Tensor): The tensor to upsample.
+        scale (int, optional): The super-resolution scale. Defaults
+            to 4.
+
+    Returns:
+        torch.Tensor: The upsampled tensor (B, C, H', W').
+    """
+
+    x_ref = torch.nn.functional.interpolate(
+        input=x[None], scale_factor=scale, mode="bicubic", antialias=True
+    ).squeeze()
+
+    return x_ref
+
 class ImgComparator:
     def __init__(self, fig, axlist = None):
         self.canvas = fig.canvas
@@ -601,63 +594,18 @@ class ImgComparator:
                 ax.set_ylim(ylim)
             self.canvas.draw_idle()
 
-def torch_csr_to_scipy(A: torch.Tensor) -> sp.csr_matrix:
-    """"Convert matrix/linear forward model, as torch tensor, to scipy sparse matrix.
-        Arguments:
-            - A: torch tensor as matrix/forward model.
-        Returns:
-            - Scipy sparse matrix.
-    """
-    assert A.layout == torch.sparse_csr, f"A must be sparse_csr {type(A.layout)}"
-    m, n = A.shape
-    indptr = A.crow_indices().detach().cpu().numpy()   # length m+1
-    indices = A.col_indices().detach().cpu().numpy()   # length nnz
-    data = A.values().detach().cpu().numpy()           # length nnz
+def DS_operator_full(HR_flat):
 
-    # (optional) SciPy prefers int32 for indices
-    if indices.dtype != np.int32: indices = indices.astype(np.int32, copy=False)
-    if indptr.dtype  != np.int32: indptr  = indptr.astype(np.int32,  copy=False)
+    HR = torch.tensor(HR_flat.reshape((1, 1, 512, 512)))  # Shape: (batch=1, channels=1, H, W)
+    LR = torch.nn.functional.interpolate(
+        input=HR, scale_factor=1 / 4, mode="bilinear", antialias=True
+    ).squeeze(0).squeeze(0)  # Remove batch and channel dims, shape: (128, 128)
+    return np.asarray(LR).flatten()
 
-    sp_matrix = sp.csr_matrix((data, indices, indptr), shape=(m, n))
+def DS_operator_32(HR_flat):
+    HR = torch.tensor(HR_flat.reshape(1,1,128,128))
+    LR = torch.nn.functional.interpolate(
+        input=HR, scale_factor=1 / 4, mode="bilinear", antialias=True
+    ).squeeze(0).squeeze(0)
+    return np.asarray(LR).flatten()
 
-    return sp_matrix 
-
-def torch_coo_to_scipy(A: torch.Tensor, to='csr'):
-    A = A.to_sparse_coo().coalesce()
-    m, n = A.shape
-    ij = A.indices().detach().cpu().numpy()            # shape [2, nnz]
-    data = A.values().detach().cpu().numpy()
-    row, col = ij[0], ij[1]
-    M = sp.coo_matrix((data, (row, col)), shape=(m, n))
-    return M.tocsr() if to == 'csr' else M
-
-def torch_sparse_to_scipy_csr(A: torch.Tensor) -> sp.csr_matrix:
-    """
-    Convert a PyTorch tensor (CSR/COO/dense) to SciPy csr_matrix.
-    - No densifying for sparse inputs.
-    - Handles CUDA tensors by moving index/data arrays to CPU.
-    """
-    m, n = A.shape
-
-    # Dense (strided) tensor
-    if A.layout == torch.strided:
-        return sp.csr_matrix(A.detach().cpu().numpy())
-
-    # Try CSR fast-path
-    try:
-        indptr  = A.crow_indices()   # only valid for CSR
-        indices = A.col_indices()
-        data    = A.values()
-    except (AttributeError, RuntimeError):
-        # Not CSR → go through COO safely
-        Acoo = A.to_sparse_coo().coalesce()
-        ij   = Acoo.indices().detach().cpu().numpy()  # [2, nnz]
-        row, col = ij[0].astype(np.int32, copy=False), ij[1].astype(np.int32, copy=False)
-        dat  = Acoo.values().detach().cpu().numpy()
-        return sp.coo_matrix((dat, (row, col)), shape=(m, n)).tocsr()
-    else:
-        # CSR build (ensure int32 indices for SciPy)
-        indptr_np  = indptr.detach().cpu().numpy().astype(np.int32, copy=False)
-        indices_np = indices.detach().cpu().numpy().astype(np.int32, copy=False)
-        data_np    = data.detach().cpu().numpy()
-        return sp.csr_matrix((data_np, indices_np, indptr_np), shape=(m, n))
