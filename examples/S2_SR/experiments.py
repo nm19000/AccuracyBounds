@@ -5,12 +5,12 @@ import rasterio
 import torch
 import numpy as np
 from scipy import sparse
-from examples.data.sr_multispectral_satellite_data.sentinel2 import SRDataset_perimg
+from S2_SR_data import SRDataset_perimg
 from tqdm import tqdm
-from examples.S2_SR.utils import bilinear_SR, bicubic_SR
+from utils import bilinear_SR, bicubic_SR
 import pandas as pd
 import matplotlib.pyplot as plt
-from acccuracy_bounds.inverseproblems.utils import get_feasible_info
+from accuracy_bounds.inverseproblems.kersize_compute_dataloader import get_feasible_info
 
 from opensr_test.main import Metrics
 from opensr_test.config import Config
@@ -279,13 +279,13 @@ def get_LB_loss_points(dists_LB, dists_loss, p,enrichment_type, KS_type, idx_ord
 if __name__ == '__main__':
     Test = False # Whether we use a small test dataset or the full one
     DSHR = True
-    light_loading = True
+    light_loading = False
     PS_X = 16
     PS_Y = PS_X//4
     p_norm = 2
     SR_factor = 4
     #noise_level_KS = 1333 # has to be 4000 or 1333
-    noise_level_KS = 4000 # has to be 4000 or 1333
+    noise_level_KS = 4000 # has to be 4000 or 1333 (only noise levels for which the Kersize has been calculated)
     preload_feas_info = True
     border_pnull = 2
     pred_type = 'bicub'
@@ -297,20 +297,11 @@ if __name__ == '__main__':
 
     patched_shapes_all = {12: patched_shapes12, 16:patched_shapes16, 20:patched_shapes20}
 
-    
+    root_folder = '/localhome/iaga_dv/Dokumente'
 
     #Checking whether there are big enough feasible sets
 
-    if False:
-        feas_app_path = '/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc/results/NL{noise_level_KS}/feas_app_PS20_NL4000.npz'
-
-        feas_app = load_npz(feas_app_path)
-        n,m = feas_app.shape
-        rows, cols = feas_app.nonzero()
-        # Find diagonal elements where row == col
-        diagonal_indices = rows == cols
-        non_diagonal_count = len(rows) - diagonal_indices.sum()
-        #print(f"Number of non-diagonal non-zero elements: {non_diagonal_count}")
+  
 
     for PS_X in [16]:
         patched_shapes = patched_shapes_all[PS_X]
@@ -322,32 +313,23 @@ if __name__ == '__main__':
         else:
             DSHR_suffix = ''
 
-        server = False
-        if server : 
-            data_path = f'/p/scratch/hai_1013/patched_crossproc_{DSHR_suffix}/PS{PS_X}'
-            feas_app_path = f'/p/scratch/hai_1013/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/feas_app_PS{PS_X}_NL{noise_level_KS}.npz'
-            distsXX_path = f'/p/scratch/hai_1013/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/distsXX_PS{PS_X}_NL{noise_level_KS}.npz'
-            json_path = f'/p/scratch/hai_1013/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/feas_info_PS{PS_X}_NL{noise_level_KS}.json'
-            distances_outfolder = f'/p/scratch/hai_1013/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}'
-            preds_folder_path = f'/p/project/hai_1013/sat_data/cross_processed'
-            P_null_path = '/p/project/hai_1013/Operators/P_null_32.npy'
-        else:
-            data_path = f'/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc_{DSHR_suffix}/PS{PS_X}'
-            feas_app_lightl_path = f'/localhome/iaga_dv/Dokumente/sat_data/cross_processed/results/NL{noise_level_KS}/feas_app_PS{PS_X}_NL{noise_level_KS}.npz'
-            distsXX_ligntl_path = f'/localhome/iaga_dv/Dokumente/sat_data/cross_processed/results/NL{noise_level_KS}/distsXX_PS{PS_X}_NL{noise_level_KS}.npz'
-            json_lightl_path = f'/localhome/iaga_dv/Dokumente/sat_data/cross_processed/results/NL{noise_level_KS}/feas_info_PS{PS_X}_NL{noise_level_KS}.json'
+ 
+        data_path = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/PS{PS_X}'
+        feas_app_lightl_path = f'{root_folder}/sat_data/cross_processed/results/NL{noise_level_KS}/feas_app_PS{PS_X}_NL{noise_level_KS}.npz'
+        distsXX_ligntl_path = f'{root_folder}/sat_data/cross_processed/results/NL{noise_level_KS}/distsXX_PS{PS_X}_NL{noise_level_KS}.npz'
+        json_lightl_path = f'{root_folder}/sat_data/cross_processed/results/NL{noise_level_KS}/feas_info_PS{PS_X}_NL{noise_level_KS}.json'
 
-            feas_app_path = f'/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/feas_app_PS{PS_X}_NL{noise_level_KS}.npz'
-            distsXX_path = f'/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/distsXX_PS{PS_X}_NL{noise_level_KS}.npz'
-            json_path = f'/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/feas_info_PS{PS_X}_NL{noise_level_KS}.json'
-            
-            distances_outfolder = f'/localhome/iaga_dv/Dokumente/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}'
-            preds_folder_path = f'/localhome/iaga_dv/Dokumente/sat_data/cross_processed'
-            P_null_path = '/localhome/iaga_dv/Dokumente/Operators/P_null_32.npy'
-            dists_LB_path = f'{distances_outfolder}/dists_LB_{PS_X}_{p_norm}norm.npy'
-            dists_loss_path = f'{distances_outfolder}/dists_loss_{pred_type}_{PS_X}_{p_norm}norm.npy'
-            idx_order_path = f'{distances_outfolder}/idx_order_{PS_X}_{p_norm}norm.json'
-            classif_path = f'{preds_folder_path}/classif_dataset.json'
+        feas_app_path = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/feas_app_PS{PS_X}_NL{noise_level_KS}.npz'
+        distsXX_path = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/distsXX_PS{PS_X}_NL{noise_level_KS}.npz'
+        json_path = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/feas_info_PS{PS_X}_NL{noise_level_KS}.json'
+        
+        distances_outfolder = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}'
+        preds_folder_path = f'{root_folder}/sat_data/cross_processed'
+        P_null_path = f'{root_folder}/Operators/P_null_32.npy'
+        dists_LB_path = f'{distances_outfolder}/dists_LB_{PS_X}_{p_norm}norm.npy'
+        dists_loss_path = f'{distances_outfolder}/dists_loss_{pred_type}_{PS_X}_{p_norm}norm.npy'
+        idx_order_path = f'{distances_outfolder}/idx_order_{PS_X}_{p_norm}norm.json'
+        classif_path = f'{preds_folder_path}/classif_dataset.json'
 
         # Get the image ids in order to iterate afterwards
         subdatasets = ['naip', 'spain_crops', 'spain_urban', 'spot']
@@ -385,16 +367,14 @@ if __name__ == '__main__':
         
         with open(classif_path, "r") as f:
                 classification = json.load(f)
-        img_moments_path = os.path.join(preds_folder_path, 'reflectance_moments.json')
-        with open(img_moments_path, 'r') as f:
-            img_moments_dic = json.load(f)
+     
 
 
-        if False:
+        if False: # Tests for the consistency of the results
             metrics_opensrtest(data_path,feas_appartenance_patches = feas_app, feas_info_patches= feas_info)        
   
    
-        if False: # Get the values for the Avg Lb and loss
+        if False: # Get the values for the Avg Lb and loss after having made the computations
             dists_LB = np.load(dists_LB_path)
             dists_loss = np.load(dists_loss_path)
             
