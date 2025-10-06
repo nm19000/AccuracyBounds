@@ -223,6 +223,16 @@ class Struct(DistanceMetric):
 
 
 def depatchify(patched_image, patch_size):
+    """
+    Converts a patched image back to a grid of patch values.
+
+    Args:
+        patched_image (np.ndarray): Patched image array.
+        patch_size (int): Size of each patch.
+
+    Returns:
+        np.ndarray: Depatchified image.
+    """
     h,w = patched_image.shape
     x_coords = list(range(0,h,patch_size))
     y_coords = list(range(0,w,patch_size))
@@ -236,6 +246,17 @@ def depatchify(patched_image, patch_size):
 
 
 def repatchify(depatched_image, patch_size, original_size):
+    """
+    Converts a depatchified image back to the original image shape.
+
+    Args:
+        depatched_image (np.ndarray): Depatchified image array.
+        patch_size (int): Size of each patch.
+        original_size (tuple): Original image size.
+
+    Returns:
+        np.ndarray: Patched image.
+    """
     h,w = original_size
     x_coords = list(range(0,h, patch_size))
     y_coords = list(range(0,w, patch_size))
@@ -323,11 +344,19 @@ def get_distance(
     return distance_fn.compute()
 
 def apply_square_op_small(Op_Mat,img, out_2Dshape):
-    '''
-    The image has a shape of C,h,w
-    Function to apply an opertor into a 2d mateix form, to an image in 2d * channels. 
+  
+    """
+    Applies a square operator matrix to each channel of an image.
     For each channel, it flattens the the channel into a 1d vector, before applying matrix multiplication and reshaping to the desired 2d shape. Note that reshape is the inverse function of flatten.
-    '''
+
+    Args:
+        Op_Mat (np.ndarray): Operator matrix.
+        img (np.ndarray or torch.Tensor): Image array (C, H, W).
+        out_2Dshape (tuple): Output 2D shape.
+
+    Returns:
+        torch.Tensor: Transformed image.
+    """
     matlist = []
     for i in range(img.shape[0]):
         matlist.append((Op_Mat@np.asarray(img[i]).flatten()).reshape(out_2Dshape))
@@ -335,9 +364,18 @@ def apply_square_op_small(Op_Mat,img, out_2Dshape):
 
 
 def apply_square_op_full(Op_mat, img, out_2D_shape_op, border = 4):
-    '''
-    The operator has to be square. It applies to P_{N(A)} for example
-    '''
+    """
+    Applies a square operator to an image in big patches (eg : 32x32, 64x64).
+
+    Args:
+        Op_mat (np.ndarray): Operator matrix.
+        img (torch.Tensor): Image tensor (C, H, W).
+        out_2D_shape_op (tuple): Output 2D shape for operator.
+        border (int, optional): Border size.
+
+    Returns:
+        torch.Tensor: Transformed image.
+    """
     c,h,w = img.shape
     b,a = out_2D_shape_op
     n_y = (h)//(b-2*border)
@@ -414,7 +452,13 @@ def set_seed(seed):
 
 
 def save_into_tiff(bands, out_path):
-    # Save bands as a TIFF file
+    """
+    Saves a multi-band image as a TIFF file.
+
+    Args:
+        bands (np.ndarray): Image bands (C, H, W).
+        out_path (str): Output file path.
+    """
     with rasterio.open(
                 out_path,
                 'w',
@@ -432,6 +476,17 @@ def save_into_tiff(bands, out_path):
     pass
 
 def get_patches_from_S2(img,patchsize, border):
+    """
+    Extracts patches from an image with a given patch size and border.
+
+    Args:
+        img (torch.Tensor): Image tensor (C, H, W).
+        patchsize (int): Patch size.
+        border (int): Border size.
+
+    Returns:
+        torch.Tensor: Stacked patches.
+    """
     h,w = img.shape[1:]
     n_patches_y = (h-border-patchsize)//patchsize
     n_patches_x = (w-border-patchsize)//patchsize
@@ -449,6 +504,19 @@ def get_patches_from_S2(img,patchsize, border):
 
 
 def build_S2_patched_dataset_DSHR(patchsize_X,img_dset_folder , subdatasets , out_dsfolder, labels = ('hr_data', 'lr_data'), border_X = 0, SR_factor = 4):
+    """
+    Builds a patched dataset for S2 images with downsampled high-resolution images, as LR images
+    and saves it into the desired folder
+
+    Args:
+        patchsize_X (int): Patch size for HR images.
+        img_dset_folder (str): Input dataset folder.
+        subdatasets (list): List of subdataset names.
+        out_dsfolder (str): Output folder for patches.
+        labels (tuple): Labels for HR and LR images.
+        border_X (int, optional): Border size for HR images.
+        SR_factor (int, optional): Super-resolution factor.
+    """
     border_Y = border_X//SR_factor
     patchsize_Y = patchsize_X//SR_factor
 
@@ -485,6 +553,18 @@ def build_S2_patched_dataset_DSHR(patchsize_X,img_dset_folder , subdatasets , ou
                 save_into_tiff(bands=np.array(patched_hr[i]), out_path=os.path.join(out_dsfolder, f'{subds}_{idxstr}_{i}_{hr_label}.tif'))
 
 def build_S2_patched_dataset(patchsize_X,img_dset_folder , subdatasets , out_dsfolder, labels = ('hr_data', 'lr_data'), border_X = 0, SR_factor = 4):
+    """
+    Builds a patched dataset for S2 images.
+
+    Args:
+        patchsize_X (int): Patch size for HR images.
+        img_dset_folder (str): Input dataset folder.
+        subdatasets (list): List of subdataset names.
+        out_dsfolder (str): Output folder for patches.
+        labels (tuple): Labels for HR and LR images.
+        border_X (int, optional): Border size for HR images.
+        SR_factor (int, optional): Super-resolution factor.
+    """
     border_Y = border_X//SR_factor
     patchsize_Y = patchsize_X//SR_factor
 
@@ -578,6 +658,13 @@ def bicubic_SR(x:torch.tensor, scale:int)-> torch.Tensor:
     return x_ref
 
 class ImgComparator:
+    """
+    Synchronizes zoom/pan across multiple matplotlib axes.
+
+    Args:
+        fig (matplotlib.figure.Figure): Figure object.
+        axlist (list, optional): List of axes to synchronize.
+    """
     def __init__(self, fig, axlist = None):
         self.canvas = fig.canvas
         if axlist is None:
@@ -595,6 +682,15 @@ class ImgComparator:
             self.canvas.draw_idle()
 
 def DS_operator_full(HR_flat):
+    """
+    Downsamples a flattened HR image to LR using bilinear interpolation.
+
+    Args:
+        HR_flat (np.ndarray): Flattened HR image.
+
+    Returns:
+        np.ndarray: Flattened LR image.
+    """
 
     HR = torch.tensor(HR_flat.reshape((1, 1, 512, 512)))  # Shape: (batch=1, channels=1, H, W)
     LR = torch.nn.functional.interpolate(
@@ -603,9 +699,31 @@ def DS_operator_full(HR_flat):
     return np.asarray(LR).flatten()
 
 def DS_operator_32(HR_flat):
+    """
+    Downsamples a flattened 128x128 HR image to 32x32 LR.
+
+    Args:
+        HR_flat (np.ndarray): Flattened HR image.
+
+    Returns:
+        np.ndarray: Flattened LR image.
+    """
     HR = torch.tensor(HR_flat.reshape(1,1,128,128))
     LR = torch.nn.functional.interpolate(
         input=HR, scale_factor=1 / 4, mode="bilinear", antialias=True
     ).squeeze(0).squeeze(0)
     return np.asarray(LR).flatten()
 
+def rescale_plot(img):
+    """
+    Rescales an image tensor to [0, 1] for plotting.
+
+    Args:
+        img (torch.Tensor): Image tensor.
+
+    Returns:
+        torch.Tensor: Rescaled image.
+    """
+    minval = torch.min(img)
+    maxval = torch.max(img)
+    return (img-minval)/(maxval-minval)

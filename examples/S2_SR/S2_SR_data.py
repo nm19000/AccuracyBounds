@@ -11,9 +11,20 @@ from scipy.ndimage import binary_dilation, binary_closing
 from scipy.ndimage import gaussian_filter
 from scipy.sparse import csr_matrix
 from torch.utils.data import DataLoader
-from examples.S2_SR.utils import apply_square_op_full
+from utils import apply_square_op_full
 
 def S2SR_collate(batch, S2_dataset, suffix):
+    """
+    Custom collate function for S2 super-resolution datasets.
+
+    Args:
+        batch (list): List of tuples containing (subdataset, image index, position).
+        S2_dataset: Dataset object containing patch size and data path.
+        suffix (str): Suffix for image files ('hr', 'lr', 'DSHR4', etc.).
+
+    Returns:
+        torch.Tensor: Stacked tensor of image patches.
+    """
     if 'hr' in suffix:
         patchsize = S2_dataset.patchsizeX
     elif 'lr' in suffix or 'DSHR' in suffix:
@@ -41,6 +52,9 @@ def S2SR_collate(batch, S2_dataset, suffix):
 
 
 class S2_Dataloader(DataLoader):
+    """
+    Custom DataLoader for S2 super-resolution datasets using a custom collate function.
+    """
     def __init__(self, dataset, suffix ,**kwargs):
         # Store the dataset so that it's accessible in the collate_fn
         self.dataset = dataset
@@ -53,12 +67,22 @@ class S2_Dataloader(DataLoader):
         super().__init__(dataset,collate_fn= collate_fn, **kwargs)
 
 class SRDataset_perimg_lightload(Dataset):
+    """
+    Dataset for loading super-resolution image patches per image without needing to store patches in separate files.
+
+    Args:
+        data_path (str): Path to the dataset.
+        patchsizes (list): List of patch sizes. (LR patchsize, HR patchsize)
+        feasible_information_patches: Feasible apparetenance information for patches.
+        feasible_appartenance_patches: Feasible appartenance for patches.
+        data_augmentation_type (str): Type of data augmentation.
+        suffixes (tuple): Suffixes for image files.
+        patch_suffixes (tuple): Suffixes for patch files.
+        patched_shapes (dict): Shapes of patched images per subdataset.
+        P_null_path (str): Path to null operator numpy file.
+    """
     def __init__(self, data_path,patchsizes, feasible_information_patches, feasible_appartenance_patches,data_augmentation_type = 'None' ,suffixes=('lr', 'hr'), patch_suffixes = ('lr', 'hr') ,patched_shapes = {'naip':(40,40), 'spain_crops': (42,42), 'spain_urban': (42,42), 'spot': (42,42)}, P_null_path = '/localhome/iaga_dv/Dokumente/Operators/P_null_32.npy' ) :
-        """
-        Args:
-            folder_path (str): Path to folder containing image patches.
-            suffixes (tuple): Suffixes used in filenames for LR, HR.
-        """
+        
         self.subdatasets = [x for x in patched_shapes.keys()]
      
         
@@ -375,6 +399,17 @@ class SRDataset_perimg_lightload(Dataset):
                     raise Exception("Oups something went wrong, and it is on our side")
                 
     def get_full_img(self,subdataset, img_idx, suffix):
+        """
+        Loads a full image from disk and crops it to patch size.
+
+        Args:
+            subdataset (str): Subdataset name.
+            img_idx (str): Image index.
+            suffix (str): Suffix for image file.
+
+        Returns:
+            torch.Tensor: Cropped image tensor.
+        """
         img_path = os.path.join(self.data_path, subdataset, img_idx, f'{suffix}.tif')
         if 'lr' in suffix or 'DSHR' in suffix:
             PS = self.patchsizeY
@@ -388,12 +423,34 @@ class SRDataset_perimg_lightload(Dataset):
         return img[:, :h-h%PS, : w-w%PS]
     
     def get_patch_position(self,idx_in_img, patched_shape):
+        """
+        Converts a 1D patch index to 2D position.
+
+        Args:
+            idx_in_img (int): Patch index in image.
+            patched_shape (tuple): Shape of patched image.
+
+        Returns:
+            tuple: (row, col) position.
+        """
         nr,nc = patched_shape
         row = idx_in_img//nc
         col = idx_in_img%nc
         return row, col
     
     def get_search_shift(self,position_base, position_lim, patched_shape_base, patched_shape_lim):
+        """
+        Computes search shift between base and limit positions.
+
+        Args:
+            position_base (tuple): Base position.
+            position_lim (tuple): Limit position.
+            patched_shape_base (tuple): Shape of base image.
+            patched_shape_lim (tuple): Shape of limit image.
+
+        Returns:
+            tuple: (y_min, y_max, x_min, x_max) search shifts.
+        """
         i_base, j_base = position_base
         i_lim, j_lim = position_lim
         nr_base,nc_base = patched_shape_base
@@ -405,10 +462,25 @@ class SRDataset_perimg_lightload(Dataset):
         return y_min, y_max, x_min, x_max
     
     def get_same_feasible_area(self, position_base, position_lim, search_shift_lim, feas_app, base_img_id, lim_img_id, patched_shape_lim, patched_shape_base):
-        '''
-        Given the area to search in img_lim, for each patch in this img_lim, 
-        we check whether it belongd in the feasible of the corresponding Fy of the base img
-        '''
+        
+
+        """
+        Finds the maximum connected area in the limit image corresponding to the base image patch
+        such that every patch in the lim image is in a same feasible set as the corresponding patch in the base image .
+
+        Args:
+            position_base (tuple): Position in base image.
+            position_lim (tuple): Position in limit image.
+            search_shift_lim (tuple): Search shift.
+            feas_app: Feasible appartenance matrix.
+            base_img_id: Base image ID.
+            lim_img_id: Limit image ID.
+            patched_shape_lim (tuple): Shape of limit image.
+            patched_shape_base (tuple): Shape of base image.
+
+        Returns:
+            tuple: (mask_same_feasible_lim, replacement_idx)
+        """
         i_lim, j_lim = position_lim
         i_base, j_base = position_base
 
@@ -457,6 +529,18 @@ class SRDataset_perimg_lightload(Dataset):
         return mask_same_feasible_lim, replacement_idx
 
     def shift_mask(self,mask, k, l, patched_shape_dst):
+        """
+        Shifts a mask by (k, l) and fits it to the destination shape.
+
+        Args:
+            mask (np.ndarray): Mask to shift.
+            k (int): Row shift.
+            l (int): Column shift.
+            patched_shape_dst (tuple): Destination shape.
+
+        Returns:
+            np.ndarray: Shifted mask.
+        """
         shifted_res = np.zeros_like(mask)
         
         rows, cols = mask.shape
@@ -486,11 +570,31 @@ class SRDataset_perimg_lightload(Dataset):
         return shifted
     
     def get_patch_idx_img(self, position, patched_shape):
+        """
+        Converts a 2D patch position to 1D index.
+
+        Args:
+            position (tuple): (row, col) position.
+            patched_shape (tuple): Shape of patched image.
+
+        Returns:
+            int: 1D patch index.
+        """
         i,j = position
         nr,nc = patched_shape
         return i*nc + j
    
     def fill_patch_info(self, values_list, patched_shape):
+        """
+        Fills a 2D grid with values from a list according to patch positions.
+
+        Args:
+            values_list (list): List of values for patches.
+            patched_shape (tuple): Shape of patched image.
+
+        Returns:
+            torch.Tensor: 2D tensor of patch info.
+        """
         nr,nc = patched_shape
         patch_info = torch.zeros((nr,nc))
         for idx in range(len(values_list)):
@@ -499,6 +603,17 @@ class SRDataset_perimg_lightload(Dataset):
         return patch_info
 
     def get_2D_patchgrid(self, idx_list, suffix, patched_shape):
+        """
+        Loads patches and arranges them in a 2D grid.
+
+        Args:
+            idx_list (list): List of patch indices.
+            suffix (str): Suffix for patch files.
+            patched_shape (tuple): Shape of patched image.
+
+        Returns:
+            torch.Tensor: 5D tensor of patches.
+        """
         assert suffix in self.suffix_list_patches
 
 
@@ -533,6 +648,17 @@ class SRDataset_perimg_lightload(Dataset):
         return patches
 
     def recompose_image(self,idx_list, suffix, patched_shape):
+        """
+        Recomposes an image from its patches.
+
+        Args:
+            idx_list (list): List of patch indices.
+            suffix (str): Suffix for patch files.
+            patched_shape (tuple): Shape of patched image.
+
+        Returns:
+            torch.Tensor: Recomposed image tensor.
+        """
     
         patches = self.get_2D_patchgrid(idx_list, suffix, patched_shape)
 
@@ -543,6 +669,17 @@ class SRDataset_perimg_lightload(Dataset):
         return reconstructed
     
     def amplify_mask(self, small_mask, size,patched_shape):
+        """
+        Amplifies a small mask to the size of the full image.
+
+        Args:
+            small_mask (np.ndarray): Small mask.
+            size (str): 'big' or 'small'.
+            patched_shape (tuple): Shape of patched image.
+
+        Returns:
+            np.ndarray: Amplified mask.
+        """
         nr,nc = patched_shape
         if size == 'big':
             ps = self.patchsizeX
@@ -559,6 +696,20 @@ class SRDataset_perimg_lightload(Dataset):
         return big_mask
 
     def get_Fy_fullimg_idx_V2(self, subdataset, img_idx_insubds, feasible_info,feas_app, lim_area_ratio = 0.6, n_iter_max_ratio = 0.4):
+        """
+        Computes patch replacement indices and orders for limit images.
+
+        Args:
+            subdataset (str): Subdataset name.
+            img_idx_insubds (str): Image index in subdataset.
+            feasible_info: Feasible information.
+            feas_app: Feasible appartenance matrix.
+            lim_area_ratio (float): Area ratio for limit.
+            n_iter_max_ratio (float): Max iteration ratio.
+
+        Returns:
+            tuple: Replacement indices and orders for limit images.
+        """
         img_idx_list = self.imgs_idx_list[(subdataset, img_idx_insubds)]
 
         # For each index in the image, get the F_yidx info and put them into variables
@@ -680,7 +831,24 @@ class SRDataset_perimg_lightload(Dataset):
         return replace_lim1_idx,replace_lim2_idx, replace_lim1_order, replace_lim2_order
 
     def get_Fy_fullimg_V2(self, subdataset, img_idx_insubds, feasible_info,feas_app, hr_suffix = 'hr_res', lr_suffix = 'lr_res',  lim_area_ratio = 0.9, n_iter_max_ratio = 1.0, sigma_blend = 1, margin_blend = 1):
+        """
+        Generates limit images from the outputs of get_Fy_fullimg_idx_V2 using patch blending for pasting.
 
+        Args:
+            subdataset (str): Subdataset name.
+            img_idx_insubds (str): Image index in subdataset.
+            feasible_info: Feasible information.
+            feas_app: Feasible appartenance matrix.
+            hr_suffix (str): Suffix for high-resolution images.
+            lr_suffix (str): Suffix for low-resolution images.
+            lim_area_ratio (float): Area ratio for limit.
+            n_iter_max_ratio (float): Max iteration ratio.
+            sigma_blend (float): Sigma for Gaussian blending.
+            margin_blend (int): Margin for blending.
+
+        Returns:
+            tuple: Limit images and their low-resolution versions.
+        """
         replace_lim1_idx,replace_lim2_idx, replace_lim1_order, replace_lim2_order = self. get_Fy_fullimg_idx_V2(subdataset = subdataset, img_idx_insubds = img_idx_insubds, feasible_info = feasible_info, feas_app= feas_app, lim_area_ratio=lim_area_ratio, n_iter_max_ratio=n_iter_max_ratio)
         replace_lim1_idx_flat,replace_lim2_idx_flat, replace_lim1_order_flat, replace_lim2_order_flat = replace_lim1_idx.flatten(),replace_lim2_idx.flatten(), replace_lim1_order.flatten(), replace_lim2_order.flatten()
         # Get the indexlist of the original image

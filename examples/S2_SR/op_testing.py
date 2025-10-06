@@ -9,7 +9,7 @@ import json
 from tqdm import tqdm
 import torch
 import rasterio
-from utils import apply_square_op_small, apply_square_op_full, rescale_plot, ImgComparator
+from utils import apply_square_op_small, apply_square_op_full, rescale_plot, ImgComparator, get_distance
 
 from opensr_test.config import Config
 from opensr_test.main import Metrics
@@ -20,7 +20,6 @@ if __name__ == '__main__':
     computeDS = False # To compute the downsampling operator under matrix form
     compute_P_null = False # To compute the Null space projection 
     check_P_null = False # To check that the Null space projection operator uner matrix is correctly computed
-    check_P_null_concat = False
     scale_plot = False # To plot some satellite images with the scal bars
 
     border = 16
@@ -43,9 +42,8 @@ if __name__ == '__main__':
         P_null = OP_calculator.make_null_projection_operator(range_basis)
 
         np.save('P_null_32.npy', P_null)
-  
-
-    P_null = np.load('../Operators/P_null_32.npy')
+    else:
+        P_null = np.load('../Operators/P_null_32.npy')
 
     w,h = P_null.shape
 
@@ -55,9 +53,6 @@ if __name__ == '__main__':
         plt.title("Sparsity pattern of A")
         plt.show()
 
-        #plt.spy(F_sparse)
-        #plt.title("Sparsity pattern of F")
-        #plt.show()
         
 
 
@@ -302,19 +297,5 @@ if __name__ == '__main__':
 
                 axes[1,1].imshow(rescale_plot(lr_padded-A_hrnull ).permute(1,2,0))
                 axes[1,1].set_title(f'A.(HR-P_null(HR))')
-
-                plt.show()
-
-            if check_P_null_concat : 
-                hr_null = apply_square_op_small(P_null, metrics.hr, out_2D_shape_op=(128,128), border = border)
-                AHR_null = metrics.apply_upsampling(hr_null,metrics.scale_factor).squeeze(0)
-
-                fig, axes = plt.subplots(1,2)
-                axes[0].imshow(rescale_plot(hr_null.permute(1,2,0))[border:-border, border:-border,:])
-                axes[0].set_title('P_null(HR) concatenated')
-
-                axes[1].imshow(rescale_plot(AHR_null.permute(1,2,0))[border//4+1:-border//4-1, border//4+1:-border//4-1,:])
-                axes[1].set_title('A.P_null(HR)')
-                print(torch.max(AHR_null[:,border//4+1:-border//4-1, border//4+1:-border//4-1]))
 
                 plt.show()

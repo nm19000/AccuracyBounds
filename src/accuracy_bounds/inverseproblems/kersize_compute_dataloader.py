@@ -11,9 +11,22 @@ from accuracy_bounds.inverseproblems.utils import insert_no_overlap_keep_A, spar
 # TODO: Why is A needed here? 
 
 def target_distances_samplingYX_precomputedFA_cuda_V2(A, target_data, feasible_appartenance, p_X, batchsize):
-    '''
-    Same as target_distances_samplingYX_perbatch_cuda but here, the feasible appartenance matrix is precomputed
-    '''
+    """
+    Computes pairwise distances between target samples using a precomputed feasible appartenance matrix. 
+    The computation is done batchwise on the nonzero entries of the common feasible appartenance matrix to avoid memory issues
+        and increase the speed of the computation.
+
+    Args:
+        target_data (DataLoader): Dataloader for target samples.
+        feasible_appartenance (torch.sparse.Tensor): Precomputed feasible appartenance matrix.
+        p_X (int or float): Norm degree for distance computation.
+        batchsize (int): Batch size for processing.
+
+    Returns:
+        tuple: (distsXX, feasible_appartenance)
+            distsXX (torch.sparse.Tensor): Sparse tensor of pairwise distances.
+            feasible_appartenance (torch.sparse.Tensor): Feasible appartenance matrix.
+    """
     assert isinstance(target_data, DataLoader), 'Data input is only supported as Dataloader'
     #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
     assert isinstance(target_data.sampler, SequentialSampler) \
@@ -75,9 +88,20 @@ def target_distances_samplingYX_precomputedFA_cuda_V2(A, target_data, feasible_a
 
     
 def target_distances_samplingYX_precomputedFA_perbatch_cuda(A, target_data1, target_data2, feasible_appartenance, p_X):
-    '''
-    Same as target_distances_samplingYX_perbatch_cuda but here, the feasible appartenance matrix is precomputed
-    '''
+    """
+    Computes pairwise distances between target samples using a precomputed feasible appartenance matrix.
+
+    Args:
+        target_data (DataLoader): Dataloader for target samples.
+        feasible_appartenance (torch.sparse.Tensor): Precomputed feasible appartenance matrix.
+        p_X (int or float): Norm degree for distance computation.
+        batchsize (int): Batch size for processing.
+
+    Returns:
+        tuple: (distsXX, feasible_appartenance)
+            distsXX (torch.sparse.Tensor): Sparse tensor of pairwise distances.
+            feasible_appartenance (torch.sparse.Tensor): Feasible appartenance matrix.
+    """
     assert isinstance(target_data1, DataLoader) and isinstance(target_data2, DataLoader) , 'Data input is only supported as Dataloader'
     #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
     assert isinstance(target_data1.sampler, SequentialSampler) and \
@@ -124,11 +148,11 @@ def target_distances_samplingYX_precomputedFA_perbatch_cuda(A, target_data1, tar
 
 def distsXX_samplingYX_batch_cuda(A, target_data1, target_data2 , p_X):
     """
-    Computes pairwise distances between two batches of target data (x) using the specified norm.
+    Computes pairwise distances between two batches of target data using the specified norm.
 
     Args:
-        target_data1 (torch.ndarray): First batch of target data.
-        target_data2 (torch.ndarray): Second batch of target data.
+        target_data1 (torch.Tensor): First batch of target data.
+        target_data2 (torch.Tensor): Second batch of target data.
         p_X (int or float): Norm degree for distance computation.
 
     Returns:
@@ -145,6 +169,21 @@ def distsXX_samplingYX_batch_cuda(A, target_data1, target_data2 , p_X):
 
 
 def feasibleApp_samplingYX_linear_cuda(A, input_data, forwarded_target, p_Y, epsilon, batchsize):
+    """
+    Efficiently computes the feasible appartenance matrix by filtering candidates using a lower bound on the norm difference,
+    then computing exact distances only for promising pairs.
+    The efficiency depends on the data structure. Eg : if all the points are in the unit sphere, it will be slow.
+
+    Args:
+        input_data (DataLoader): Dataloader for input samples.
+        forwarded_target (DataLoader): Dataloader for forwarded target samples.
+        p_Y (int or float): Norm degree for feasibility computation.
+        epsilon (float): Feasibility threshold.
+        batchsize (int): Batch size for processing.
+
+    Returns:
+        torch.sparse.Tensor: Feasible appartenance matrix.
+    """
     assert isinstance(input_data, DataLoader) and isinstance(forwarded_target, DataLoader) , 'Data input is only supported as Dataloader'
     #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
     assert isinstance(input_data.sampler, SequentialSampler) and \
@@ -262,6 +301,18 @@ def feasibleApp_samplingYX_linear_cuda(A, input_data, forwarded_target, p_Y, eps
     return feasible_appartenance
 
 def feasibleApp_samplingYX_perbatch_cuda(A, input_data, forwarded_target, p_Y, epsilon):
+    """
+    Computes the feasible appartenance matrix by evaluating all pairs in batches.
+
+    Args:
+        input_data (DataLoader): Dataloader for input samples.
+        forwarded_target (DataLoader): Dataloader for forwarded target samples.
+        p_Y (int or float): Norm degree for feasibility computation.
+        epsilon (float): Feasibility threshold.
+
+    Returns:
+        torch.sparse.Tensor: Feasible appartenance matrix.
+    """
     assert isinstance(input_data, DataLoader) and isinstance(forwarded_target, DataLoader) , 'Data input is only supported as Dataloader'
     #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
     assert isinstance(input_data.sampler, SequentialSampler) and \
@@ -307,16 +358,16 @@ def feasibleApp_samplingYX_perbatch_cuda(A, input_data, forwarded_target, p_Y, e
 
 def feasibleApp_samplingYX_batch_cuda(A, input_data, forwarded_target, p_Y, epsilon):
     """
-    Determines which target samples belong to the feasible set of each input data sample.
+    Determines which target samples belong to the feasible set of each input data sample for a batch.
 
     Args:
-        input_data (torch.ndarray): Batch of input samples (y).
-        forwarded_target (torch.ndarray): Batch of forwarded target samples (F(x,e)).
+        input_data (torch.Tensor or np.ndarray): Batch of input samples.
+        forwarded_target (torch.Tensor or np.ndarray): Batch of forwarded target samples.
         p_Y (int or float): Norm degree for feasibility computation.
         epsilon (float): Feasibility threshold.
 
     Returns:
-        torch.ndarray: Boolean matrix indicating feasibility (shape: [forwarded_target, input_data]).
+        torch.Tensor: Boolean matrix indicating feasibility (shape: [forwarded_target, input_data]).
     """
     from pdb import set_trace
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -335,7 +386,19 @@ def feasibleApp_samplingYX_batch_cuda(A, input_data, forwarded_target, p_Y, epsi
 
 
 def get_feasible_info(distsXX,feasible_appartenance):
-    # Get the information of each F_y : diam(F_y), the indexes of elements corresponding to diam(F_y), the cardinal of F_y
+    """
+    Computes information for each feasible set F_y:
+    - Diameter of F_y (max pairwise distance within F_y)
+    - Indices of elements corresponding to the diameter
+    - Cardinality of F_y
+
+    Args:
+        distsXX (scipy.sparse matrix): Pairwise distance matrix between target samples.
+        feasible_appartenance (scipy.sparse matrix): Feasible appartenance matrix.
+
+    Returns:
+        list: List of tuples (diam_Fy, [i, j], cardinality) for each target sample.
+    """
 
     def get_info(y_idx, fa, dXX):
         # Getting the indexes of x's in the F_y
