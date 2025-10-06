@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_wckersize_conv(wc_kersizef, kersize_approxis, ker_size, max_k):
+def plot_wckersize_conv(wc_kersizef, kersize_approxis, ker_size, iterations):
 
     # Plot results
-    x_axis = np.arange(2, max_k+1)
+    x_axis = iterations
     y_axis = np.array(kersize_approxis)
     plt.plot(x_axis, y_axis)
     plt.axhline(ker_size, color='r')

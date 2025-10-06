@@ -205,9 +205,7 @@ def feasibleApp_samplingYX_linear_cuda(A, input_data, forwarded_target, p_Y, eps
     #   If L2, get the mean and variance of each datapoint and then compute the pairwise Lb of the diff norm
     #   Else, compute the norm of every datapoint and use reverse triangle inequality
     
-    print('Filtering candidates with distance LB')
     norms_input = []
-    print('Loading input batches')
     for input_batch_id, input_batch in enumerate(input_data):
         n_batches = len(input_data)
         print(f"Input Batch: [{input_batch_id+1} / {n_batches}], ", end="\r")
@@ -219,7 +217,6 @@ def feasibleApp_samplingYX_linear_cuda(A, input_data, forwarded_target, p_Y, eps
 
     norms_input = torch.concatenate(norms_input)
 
-    print('Loading forwarded target batches')
     for target_batch_id, target_batch in enumerate(forwarded_target):
         
         n_batches = len(forwarded_target)
@@ -261,11 +258,9 @@ def feasibleApp_samplingYX_linear_cuda(A, input_data, forwarded_target, p_Y, eps
         n_batches = n_indexes//batchsize
     else:
         n_batches = (n_indexes//batchsize)+1
-    print(f'Number of candidates : {n_indexes} \n ratio = {n_indexes/(n_input*n_target)}')
 
     all_feas_app = []
     # Then Iterate batchwise manually over the nonzero indices
-    print('Computing exact distances for candidates')
     for i_batch in range(n_batches):
         
         print(f" Batch: [{i_batch+1} / {n_batches}], ", end="\r")
@@ -285,7 +280,7 @@ def feasibleApp_samplingYX_linear_cuda(A, input_data, forwarded_target, p_Y, eps
         vectors2 = forwarded_target.collate_fn(data2)
         
         X1 = vectors1.reshape(vectors1.shape[0], -1)
-        X2 = vectors2.reshape(vectors2.shape[0, -1])
+        X2 = vectors2.reshape(vectors2.shape[0], -1)
 
 
         X1 = X1.to(device)
