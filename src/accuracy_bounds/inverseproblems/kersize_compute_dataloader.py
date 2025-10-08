@@ -10,7 +10,7 @@ from accuracy_bounds.inverseproblems.utils import insert_no_overlap_keep_A, spar
 
 # TODO: Why is A needed here? 
 
-def target_distances_samplingYX_precomputedFA_cuda_V2(A, target_data, feasible_appartenance, p_X, batchsize):
+def target_distances_samplingYX_precomputedFA_cuda_V2(target_data, feasible_appartenance, p_X, batchsize):
     """
     Computes pairwise distances between target samples using a precomputed feasible appartenance matrix. 
     The computation is done batchwise on the nonzero entries of the common feasible appartenance matrix to avoid memory issues
@@ -87,7 +87,7 @@ def target_distances_samplingYX_precomputedFA_cuda_V2(A, target_data, feasible_a
     return distsXX, feasible_appartenance
 
     
-def target_distances_samplingYX_precomputedFA_perbatch_cuda(A, target_data1, target_data2, feasible_appartenance, p_X):
+def target_distances_samplingYX_precomputedFA_perbatch_cuda(A,target_data1, target_data2, feasible_appartenance, p_X):
     """
     Computes pairwise distances between target samples using a precomputed feasible appartenance matrix.
 
@@ -131,7 +131,7 @@ def target_distances_samplingYX_precomputedFA_perbatch_cuda(A, target_data1, tar
             idx_jmin = batch_size_target * target_batch_id2
             idx_jmax = min(idx_jmin + batch_size_target, n_target)
 
-            dists_small = distsXX_samplingYX_batch_cuda(A, target_batch1, target_batch2, p_X)
+            dists_small = distsXX_samplingYX_batch_cuda(target_batch1, target_batch2, p_X)
             
             common_feasible_small = sparse_block(common_feasible, idx_imin, idx_imax, idx_jmin, idx_jmax, out_layout="coo").to_dense()            
             mask = common_feasible_small != 0
@@ -146,7 +146,7 @@ def target_distances_samplingYX_precomputedFA_perbatch_cuda(A, target_data1, tar
             distsXX = insert_no_overlap_keep_A(distsXX, dists_small)
     return distsXX, feasible_appartenance
 
-def distsXX_samplingYX_batch_cuda(A, target_data1, target_data2 , p_X):
+def distsXX_samplingYX_batch_cuda(target_data1, target_data2 , p_X):
     """
     Computes pairwise distances between two batches of target data using the specified norm.
 
@@ -168,7 +168,7 @@ def distsXX_samplingYX_batch_cuda(A, target_data1, target_data2 , p_X):
 
 
 
-def feasibleApp_samplingYX_linear_cuda(A, input_data, forwarded_target, p_Y, epsilon, batchsize):
+def feasibleApp_samplingYX_linear_cuda(input_data, forwarded_target, p_Y, epsilon, batchsize):
     """
     Efficiently computes the feasible appartenance matrix by filtering candidates using a lower bound on the norm difference,
     then computing exact distances only for promising pairs.
@@ -289,7 +289,7 @@ def feasibleApp_samplingYX_linear_cuda(A, input_data, forwarded_target, p_Y, eps
         
     return feasible_appartenance
 
-def feasibleApp_samplingYX_perbatch_cuda(A, input_data, forwarded_target, p_Y, epsilon):
+def feasibleApp_samplingYX_perbatch_cuda(input_data, forwarded_target, p_Y, epsilon):
     """
     Computes the feasible appartenance matrix by evaluating all pairs in batches.
 
@@ -321,7 +321,7 @@ def feasibleApp_samplingYX_perbatch_cuda(A, input_data, forwarded_target, p_Y, e
         for input_batch_id, input_batch in enumerate(input_data):
             print(f"Target Batch: [{target_batch_id+1} / {len(forwarded_target)}],     Input Batch: [{input_batch_id+1} / {len(input_data)}]                    ", end="\r")
                 
-            feasible_small = feasibleApp_samplingYX_batch_cuda(A, input_batch, target_batch, p_Y, epsilon)
+            feasible_small = feasibleApp_samplingYX_batch_cuda(input_batch, target_batch, p_Y, epsilon)
             feasible_small = feasible_small.to_sparse_csr()
 
             batch_size_target = target_batch.shape[0]
@@ -345,7 +345,7 @@ def feasibleApp_samplingYX_perbatch_cuda(A, input_data, forwarded_target, p_Y, e
     feasible_appartenance = feasible_appartenance.to_sparse_coo()
     return feasible_appartenance
 
-def feasibleApp_samplingYX_batch_cuda(A, input_data, forwarded_target, p_Y, epsilon):
+def feasibleApp_samplingYX_batch_cuda(input_data, forwarded_target, p_Y, epsilon):
     """
     Determines which target samples belong to the feasible set of each input data sample for a batch.
 
