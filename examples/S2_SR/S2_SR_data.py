@@ -503,7 +503,6 @@ class SRDataset_perimg_lightload(Dataset):
 
                 if i==0 and j==0 and feas_app[idx_lim, idx_base] ==0 and True:
                     
-                    print()
                     patch_id_base = self.patch_ids[idx_base]
 
                     img_base_id = self.get_img_id(int(idx_base))
@@ -1475,7 +1474,6 @@ class SRDataset_perimg(Dataset):
 
                 if i==0 and j==0 and feas_app[idx_lim, idx_base] ==0 and True:
                     
-                    print()
                     patch_id_base = self.patch_ids[idx_base]
 
                     img_base_id = self.get_img_id(int(idx_base))
@@ -2282,7 +2280,6 @@ class SRDataset(Dataset):
 
                 if i==0 and j==0 and feas_app[idx_lim, idx_base] ==0 and True:
                     
-                    print()
                     patch_id_base = self.patch_ids[idx_base]
 
                     img_base_id = self.get_img_id(int(idx_base))
