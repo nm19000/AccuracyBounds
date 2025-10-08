@@ -229,12 +229,6 @@ def feasibleApp_samplingYX_linear_cuda(A, input_data, forwarded_target, p_Y, eps
         # Compute the pairwise absolute difference of the norms
         feas_candidates_small = torch.abs(norms_batch[:,None]- norms_input[None,:])<epsilon
 
-
-        if target_batch_id %50 ==35 and False:
-            h,w = feasible_appartenance_candidates.shape
-            print(f'Sparsity ratio of feas_candidates : {feasible_appartenance_candidates.nnz/(idx_imin*w)}')
-            print(f'Sizes : \n Norms batch : {norms_batch.nbytes/(1024*1024)} MB \n feas_candidates_small : {feas_candidates_small.nbytes/(1024*1024)} MB \n feasible_appartenance_candidates : {feasible_appartenance_candidates.data.nbytes/(1024*1024)} MB')
-            
         batch_size_target = target_batch.shape[0]
 
         idx_imin = batch_size_target * target_batch_id
