@@ -105,18 +105,18 @@ if __name__ == '__main__':
         
     if light_load:
         print("Compute Feasible Appartenance")
-        feas_app = feasibleApp_samplingYX_perbatch_cuda(0, input_loader_light, forwarded_target_loader_light, p_Y=2, epsilon=(noise_level*n_bands*(patchsize_Y**2))**(1/2))
-        #feas_app = feasibleApp_samplingYX_linear_cuda(0, input_loader_light, forwarded_target_loader_light, p_Y = 2, epsilon=(noise_level*n_bands*(patchsize_Y**2))**(1/2), batchsize=1000000)
+        feas_app = feasibleApp_samplingYX_perbatch_cuda(input_loader_light, forwarded_target_loader_light, p_Y=2, epsilon=(noise_level*n_bands*(patchsize_Y**2))**(1/2))
+        #feas_app = feasibleApp_samplingYX_linear_cuda(input_loader_light, forwarded_target_loader_light, p_Y = 2, epsilon=(noise_level*n_bands*(patchsize_Y**2))**(1/2), batchsize=1000000)
     
     else:
         print("Compute Feasible Appartenance")
-        feas_app = feasibleApp_samplingYX_perbatch_cuda(0, input_loader, forwarded_target_loader, p_Y=2, epsilon=(noise_level*n_bands*(patchsize_Y**2))**(1/2))
+        feas_app = feasibleApp_samplingYX_perbatch_cuda(input_loader, forwarded_target_loader, p_Y=2, epsilon=(noise_level*n_bands*(patchsize_Y**2))**(1/2))
     
     print("Convert to Scipy Sparse")
     feas_app_save = torch_csr_to_scipy(feas_app.cpu().to_sparse_csr())
     sparse.save_npz(os.path.join(results_fp, f'feas_app_PS{patchsize_X}_NL{noise_level}'), feas_app_save)
 
-    distsXX, feasible_appartenance = target_distances_samplingYX_precomputedFA_cuda_V2(0, target_loader_light, feas_app, p_X=1, batchsize=100000)
+    distsXX, feasible_appartenance = target_distances_samplingYX_precomputedFA_cuda_V2(target_loader_light, feas_app, p_X=1, batchsize=100000)
 
     
     distsXX = torch_sparse_to_scipy_csr(distsXX)
