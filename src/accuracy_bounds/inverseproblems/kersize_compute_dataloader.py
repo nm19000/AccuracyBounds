@@ -8,8 +8,6 @@ from scipy import sparse
 from accuracy_bounds.inverseproblems.utils import insert_no_overlap_keep_A, sparse_block, offset_csr_block
 
 
-# TODO: Why is A needed here? 
-
 def target_distances_samplingYX_precomputedFA_cuda_V2(target_data, feasible_appartenance, p_X, batchsize):
     """
     Computes pairwise distances between target samples using a precomputed feasible appartenance matrix. 
@@ -452,7 +450,7 @@ def kersize_samplingYX(distsXX, feasible_appartenance):
 
     return np.nanmax(np.array(list(results)))
 
-def avgLB_samplingYX(distsXX, feasible_appartenance, p):
+def avgLB_samplingYX(distsXX, feasible_appartenance,p_X):
     """
     Computes the lower bound of the average error.
 
@@ -476,14 +474,14 @@ def avgLB_samplingYX(distsXX, feasible_appartenance, p):
         subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
         
         size_feas = len(valid_idx)
-        return np.nanmean(subdistXX**p)
+        return np.divide(np.nansum(np.power(subdistXX,p_X)), np.power(size_feas,2))
 
 
 
     n,p = feasible_appartenance.shape
     results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p)))
 
-    return np.nanmean(np.asarray(list(results)))**(1/p)
+    return np.power(np.nanmean(np.asarray(list(results))),np.divide(1,p_X))
 
 
 
