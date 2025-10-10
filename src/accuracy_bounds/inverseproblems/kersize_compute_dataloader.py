@@ -477,7 +477,6 @@ def avgLB_samplingYX(distsXX, feasible_appartenance,p_X):
         return np.divide(np.nansum(np.power(subdistXX,p_X)), np.power(size_feas,2))
 
 
-
     n,p = feasible_appartenance.shape
     results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p)))
 
