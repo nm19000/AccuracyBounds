@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from accuracy_bounds.inverseproblems.kersize_compute_dataloader import feasibleApp_samplingYX_perbatch_cuda,target_distances_samplingYX_precomputedFA_cuda_V2, target_distances_samplingYX_precomputedFA_perbatch_cuda
+from src.accuracy_bounds.inverseproblems.feasible_sets_dataloader import feasibleApp_samplingYX_perbatch_cuda,target_distances_samplingYX_precomputedFA_cuda_V2, target_distances_samplingYX_precomputedFA_perbatch_cuda
 import numpy as np
 import time
 
@@ -38,9 +38,9 @@ dataloader_forwarded3D = DataLoader(dataset_proj, batch_size=batch_size, shuffle
 
 feas_app = feasibleApp_samplingYX_perbatch_cuda(dataloader_proj, dataloader_forwarded3D, p_Y=2, epsilon=epsilon)
 t0 = time.time()
-distsXX_new, feas_app_new = target_distances_samplingYX_precomputedFA_cuda_V2(dataloader_3D, feas_app, p_X = 1, batchsize=10000)
+distsXX_new  = target_distances_samplingYX_precomputedFA_cuda_V2(dataloader_3D, feas_app, p_X = 1, batchsize=10000)
 t1 = time.time()
-distsXX_old, feas_app_old = target_distances_samplingYX_precomputedFA_perbatch_cuda(dataloader_3D, dataloader_3D_2, feas_app, p_X = 1)
+distsXX_old = target_distances_samplingYX_precomputedFA_perbatch_cuda(dataloader_3D, dataloader_3D_2, feas_app, p_X = 1)
 t2 = time.time()
 print(f'Time taken for the new method= {np.round(t1-t0, 3)} seconds')
 print(f'Time taken for the old method= {np.round(t2-t1, 3)} seconds')

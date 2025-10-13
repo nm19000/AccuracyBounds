@@ -10,7 +10,7 @@ from tqdm import tqdm
 from utils import bilinear_SR, bicubic_SR
 import pandas as pd
 import matplotlib.pyplot as plt
-from accuracy_bounds.inverseproblems.feasible_sets_dataloader import get_feasible_info
+from src.accuracy_bounds.inverseproblems.feasible_sets_dataloader import get_feasible_info
 
 from opensr_test.main import Metrics
 from opensr_test.config import Config
