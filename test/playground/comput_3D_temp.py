@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from src.accuracy_bounds.inverseproblems.feasible_sets_dataloader import feasible_appartenance_additive_noise_dataloader_cuda,target_distances_samplingYX_precomputedFA_cuda_V2, target_distances_samplingYX_precomputedFA_perbatch_cuda
+from src.accuracy_bounds.inverseproblems.feasible_sets_dataloader import feasible_appartenance_additive_noise_dataloader_cuda, target_distances_cuda_V2, target_distances_samplingYX_precomputedFA_perbatch_cuda
 import numpy as np
 import time
 
@@ -38,7 +38,7 @@ dataloader_forwarded3D = DataLoader(dataset_proj, batch_size=batch_size, shuffle
 
 feas_app = feasible_appartenance_additive_noise_dataloader_cuda(dataloader_proj, dataloader_forwarded3D, p_Y=2, epsilon=epsilon)
 t0 = time.time()
-distsXX_new  = target_distances_samplingYX_precomputedFA_cuda_V2(dataloader_3D, feas_app, p_X = 1, batchsize=10000)
+distsXX_new  = target_distances_cuda_V2(dataloader_3D, feas_app, p_X = 1, batchsize=10000)
 t1 = time.time()
 distsXX_old = target_distances_samplingYX_precomputedFA_perbatch_cuda(dataloader_3D, dataloader_3D_2, feas_app, p_X = 1)
 t2 = time.time()
