@@ -1,4 +1,4 @@
-from accuracy_bounds.inverseproblems.utils import MatrixOpCalculator
+from src.accuracy_bounds.inverseproblems.utils import MatrixOpCalculator
 from utils import DS_operator_32
 from scipy import sparse
 from scipy.sparse import hstack, identity, load_npz
