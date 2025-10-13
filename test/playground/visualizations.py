@@ -31,10 +31,10 @@ def plot_times_comput(n_iter_list, times_comput):
     plt.show()
     print(f'The last kernel size computation took {times_comput[-1]:6f} seconds')
 
-def plot_avkersize_conv(av_kersize, av_kersizes, ker_size, max_k):
+def plot_avkersize_conv(av_kersize, av_kersizes, ker_size, iterations):
 
     # Plot results
-    x_axis = np.arange(2, max_k+1)
+    x_axis = iterations
     y_axis = np.array(av_kersizes)
     plt.plot(x_axis, y_axis)
     plt.axhline(ker_size, color='r')
