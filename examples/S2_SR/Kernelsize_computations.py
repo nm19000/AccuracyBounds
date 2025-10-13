@@ -116,7 +116,7 @@ if __name__ == '__main__':
     feas_app_save = torch_csr_to_scipy(feas_app.cpu().to_sparse_csr())
     sparse.save_npz(os.path.join(results_fp, f'feas_app_PS{patchsize_X}_NL{noise_level}'), feas_app_save)
 
-    distsXX, feasible_appartenance = target_distances_samplingYX_precomputedFA_cuda_V2(target_loader_light, feas_app, p_X=1, batchsize=100000)
+    distsXX = target_distances_samplingYX_precomputedFA_cuda_V2(target_loader_light, feas_app, p_X=1, batchsize=100000)
 
     
     distsXX = torch_sparse_to_scipy_csr(distsXX)
