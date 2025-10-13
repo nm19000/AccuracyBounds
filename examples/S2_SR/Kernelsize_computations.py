@@ -7,7 +7,7 @@ from scipy import sparse
 
 from S2_SR_data import SRDataset, SRDataset_lightload,S2_Dataloader
 from torch.utils.data import DataLoader
-from src.accuracy_bounds.inverseproblems.kersize_compute_dataloader import feasibleApp_samplingYX_perbatch_cuda, target_distances_samplingYX_precomputedFA_cuda_V2, target_distances_samplingYX_precomputedFA_perbatch_cuda
+from src.accuracy_bounds.inverseproblems.feasible_sets_dataloader import feasibleApp_samplingYX_perbatch_cuda,feasibleApp_samplingYX_linear_cuda ,target_distances_samplingYX_precomputedFA_cuda_V2
 from src.accuracy_bounds.inverseproblems.utils import torch_sparse_to_scipy_csr, torch_csr_to_scipy
 
     
