@@ -5,22 +5,20 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader, SequentialSampler
 from accuracy_bounds.inverseproblems.utils import insert_no_overlap_keep_A, sparse_block, offset_csr_block
 
-def target_distances_samplingYX_precomputedFA_cuda_V2(target_data, feasible_appartenance, p_X, batchsize):
+def target_distances_cuda_V2(target_data, feasible_appartenance, p_X, batchsize):
     """
-    Computes pairwise distances between target samples using a precomputed feasible appartenance matrix. 
-    The computation is done batchwise on the nonzero entries of the common feasible appartenance matrix to avoid memory issues
-        and increase the speed of the computation.
+    Version 2: Computes pairwise distances between target samples using a feasible appartenance matrix that indicates traget data points belonging to one feasible set. 
+    The computation is done batchwise on the nonzero entries of the common feasible appartenance matrix to avoid memory issues.
 
     Args:
-        target_data (DataLoader): Dataloader for target samples.
-        feasible_appartenance (torch.sparse.Tensor): Precomputed feasible appartenance matrix.
-        p_X (int or float): Norm degree for distance computation.
-        batchsize (int): Batch size for processing.
+        target_data: (DataLoader) Dataloader for target samples.
+        feasible_appartenance: (torch.sparse.Tensor) feasible appartenance matrix.
+        p_X: (int or float) Norm degree for distance computation.
+        batchsize: (int) Batch size for processing.
 
     Returns:
-        tuple: (distsXX, feasible_appartenance)
-            distsXX (torch.sparse.Tensor): Sparse tensor of pairwise distances.
-            feasible_appartenance (torch.sparse.Tensor): Feasible appartenance matrix.
+        distsXX: (torch.sparse.Tensor) Sparse tensor of pairwise distances.
+
     """
     assert isinstance(target_data, DataLoader), 'Data input is only supported as Dataloader'
     #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
@@ -81,24 +79,43 @@ def target_distances_samplingYX_precomputedFA_cuda_V2(target_data, feasible_appa
 
     return distsXX
 
-    
-def target_distances_samplingYX_precomputedFA_perbatch_cuda(target_data1, target_data2, feasible_appartenance, p_X):
+def target_distances_batch_cuda(target_data1, target_data2 , p_X):
     """
-    Computes pairwise distances between target samples using a precomputed feasible appartenance matrix.
+    Computes pairwise distances between two batches of target data using the specified norm with order p_X.
 
     Args:
-        target_data (DataLoader): Dataloader for target samples.
-        feasible_appartenance (torch.sparse.Tensor): Precomputed feasible appartenance matrix.
-        p_X (int or float): Norm degree for distance computation.
-        batchsize (int): Batch size for processing.
+        target_data1: (torch.Tensor) batch of target data.
+        target_data2: (torch.Tensor) batch of target data.
+        p_X: (int or float) Norm degree for distance computation.
 
     Returns:
-        tuple: (distsXX, feasible_appartenance)
-            distsXX (torch.sparse.Tensor): Sparse tensor of pairwise distances.
-            feasible_appartenance (torch.sparse.Tensor): Feasible appartenance matrix.
+        torch.Tensor: Matrix of pairwise distances between target_data1 and target_data2.
+    """
+    x1_flat = target_data1.flatten(start_dim=1)
+    x2_flat = target_data2.flatten(start_dim=1)
+
+    #distancesXX = torch.norm(x1_flat[:,None, :]-x2_flat[None,:,:], p = p_X, dim = -1)
+    distancesXX = torch.cdist(x1_flat, x2_flat, p = p_X)
+
+    return distancesXX
+    
+def target_distances_dataloader_cuda(target_data1, target_data2, feasible_appartenance, p_X):
+    """
+    Computes pairwise distances between target samples in the same set using a feasible appartenance matrix
+    allocating the sample indices to feasible sets.
+
+    Args:
+        target_data1: (DataLoader) Dataloader for target samples.
+        target_data2: (DataLoader) Dataloader for target samples.
+        feasible_appartenance: (torch.sparse.Tensor) Precomputed feasible appartenance matrix.
+        p_X: (int or float) Norm degree for distance computation.
+        batchsize: (int) Batch size for processing.
+
+    Returns:
+        distsXX: (torch.sparse.Tensor) Sparse tensor of pairwise distances.
     """
     assert isinstance(target_data1, DataLoader) and isinstance(target_data2, DataLoader) , 'Data input is only supported as Dataloader'
-    #print(type(input_data.sampler), type(target_data1.sampler), type(target_data2.sampler))
+
     assert isinstance(target_data1.sampler, SequentialSampler) and \
            isinstance(target_data2.sampler, SequentialSampler), \
            'Dataloaders with Random samplers are not supported'
@@ -126,7 +143,7 @@ def target_distances_samplingYX_precomputedFA_perbatch_cuda(target_data1, target
             idx_jmin = batch_size_target * target_batch_id2
             idx_jmax = min(idx_jmin + batch_size_target, n_target)
 
-            dists_small = distsXX_samplingYX_batch_cuda(target_batch1, target_batch2, p_X)
+            dists_small = target_distances_batch_cuda(target_batch1, target_batch2, p_X)
             
             common_feasible_small = sparse_block(common_feasible, idx_imin, idx_imax, idx_jmin, idx_jmax, out_layout="coo").to_dense()            
             mask = common_feasible_small != 0
@@ -139,42 +156,23 @@ def target_distances_samplingYX_precomputedFA_perbatch_cuda(target_data1, target
 
             dists_small = offset_csr_block(dists_small.to_sparse_csr(), i0, j0, (n_target, n_target))
             distsXX = insert_no_overlap_keep_A(distsXX, dists_small)
+
     return distsXX
-
-def distsXX_samplingYX_batch_cuda(target_data1, target_data2 , p_X):
-    """
-    Computes pairwise distances between two batches of target data using the specified norm.
-
-    Args:
-        target_data1 (torch.Tensor): First batch of target data.
-        target_data2 (torch.Tensor): Second batch of target data.
-        p_X (int or float): Norm degree for distance computation.
-
-    Returns:
-        torch.Tensor: Matrix of pairwise distances between target_data1 and target_data2.
-    """
-    x1_flat = target_data1.flatten(start_dim=1)
-    x2_flat = target_data2.flatten(start_dim=1)
-
-    #distancesXX = torch.norm(x1_flat[:,None, :]-x2_flat[None,:,:], p = p_X, dim = -1)
-    distancesXX = torch.cdist(x1_flat, x2_flat, p = p_X)
-
-    return distancesXX
 
 
 def get_feasible_info(distsXX,feasible_appartenance):
     """
     Computes information for each feasible set F_y:
-    - Diameter of F_y (max pairwise distance within F_y)
-    - Indices of elements corresponding to the diameter
-    - Cardinality of F_y
+    - Diameter of F_y (maximum pairwise distance within F_y),
+    - Indices of elements corresponding to the diameter,
+    - Cardinality of F_y (number of elements in the feasible set).
 
     Args:
-        distsXX (scipy.sparse matrix): Pairwise distance matrix between target samples.
-        feasible_appartenance (scipy.sparse matrix): Feasible appartenance matrix.
+        distsXX: (scipy.sparse matrix) Pairwise distance matrix between target samples.
+        feasible_appartenance: (scipy.sparse matrix) Feasible appartenance matrix.
 
     Returns:
-        list: List of tuples (diam_Fy, [i, j], cardinality) for each target sample.
+        list: List of (diam_Fy, [i, j], cardinality) for each target sample.
     """
 
     def get_info(y_idx, fa, dXX):
