@@ -1,5 +1,6 @@
 import numpy as np
 import torch 
+import time
 from torch.utils.data import DataLoader
 from playground.generator_functions import random_uni_points_in_ball
 from src.accuracy_bounds.inverseproblems.feasible_sets import compute_feasible_set_linear_forwardmodel
@@ -136,3 +137,24 @@ if error_average_cuda << 0.3:
     print("average kernelsize cuda version passed")
 else:
     print("average kernelsize cuda version not passed")
+
+
+## Test if feasible appartenance matrix computation versions produce the same results
+
+batch_size = 100
+
+input_loader1 = DataLoader(input_data, batch_size=batch_size, num_workers=batch_size, drop_last=False)
+input_loader2 = DataLoader(input_data, batch_size=batch_size, num_workers=batch_size, drop_last=False)
+target_loader1 = DataLoader(target_data, batch_size=batch_size, num_workers=batch_size, drop_last=False)
+target_loader2 = DataLoader(target_data, batch_size=batch_size, num_workers=batch_size, drop_last=False) 
+
+t0 = time.time()
+feas_app_1 = feasible_appartenance_additive_noise_dataloader_cuda(input_data=input_loader1, forwarded_target= input_loader2, p_Y=2, epsilon=epsilon)
+t1 = time.time()
+feas_app_2 = feasible_appartenance_additive_noise_cuda(input_loader1, input_loader2, p_Y=2, epsilon= epsilon, batchsize=50)
+t2 = time.time()
+
+print(f'Per batch : tool {t1-t0:.4f} seconds')
+print(f'With candidate selection : {t2-t1:.4f} seconds')
+delta = feas_app_1 - feas_app_1.to(dtype=feas_app_1.dtype)
+print(f'Difference between the computations {delta.sum()}')
