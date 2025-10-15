@@ -9,3 +9,8 @@ Debugging tests
 2. Do target_distances_samplingYX_precomputedFA_cuda_V2 and target_distances_samplingYX_precomputedFA_perbatch_cuda give the same results ?
 
 
+
+
+Should we test these functionalities? 
+    random_uni_points_in_ball
+    apply_forward_model
