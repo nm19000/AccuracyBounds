@@ -43,7 +43,7 @@ Issues = "https://github.com/nm190000/AccuracyBounds"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q"
+addopts = "-vv -rA --durations=0"
 testpaths = [
     "test",
 ]
