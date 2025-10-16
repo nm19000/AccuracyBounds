@@ -25,7 +25,13 @@ The lower bound to the average error of any approximate inverse map is the avera
 
 The lower bound to the worst-case error of any approximate inverse map is the worst-case kernel size. The definition of the worst-case kernel size can be found in the following [preprint](https://arxiv.org/abs/2311.16898).
 
+# Testing 
 
+The algorithms for computing the worst-case and average kernel size are tested against linear algebra examples, where the worst-case and average kernel size can be calculated analytically in the limit of infinite datapoints. Thus, we ensure that the implemented algorithms compute the correct quantities. The algorithm versions that run with cuda can be tested with test/test_toy_example_cuda.py. The algorithm versions that only run with numpy can be tested with test/test_toy_example_np.py.
+
+For computing the feasible sets there are two versions to compute these available: in terms of list and in terms of feasible appartenance matrices that allocate data points to feasible sets. Both versions are suitable for forward models with additive noise.
+
+For interactive testing the algorithms to compute the worst-case and average kernel size with numpy and cuda please see test/playground/testing.ipynb.
 
 # References
 If you use this software in your work, please cite our [preprint](https://arxiv.org/abs/2510.10229):
@@ -95,7 +101,7 @@ cross_processed/ \
 The data used in our experiments can be downloaded from the indications on [huggingface](https://huggingface.co/datasets/isp-uv-es/opensr-test). 
 
 
-### Preliminary Kernelsize Computations
+### Preliminary Kernel Size Computations
 
 Run the command
  " python test/S2_SR/Kernelsize_computations.py "
@@ -119,7 +125,7 @@ scale_plot = False # To plot some satellite images with the scale bars \
 
 ### Run the experiments
 
-After having run the preliminary kernelsize and kernel projection operator computations, the experiments are ready to be reproduced with the command 
+After having run the preliminary kernel size and kernel projection operator computations, the experiments are ready to be reproduced with the command 
 
 ""
 python test/S2_SR/experiments.py
@@ -136,7 +142,7 @@ SR_factor = 4 # Leave it to 4 (super resolution factor) \
 noise_level_KS = 4000 # has to Correspond with the preliminary computations of the kernel size \
 preload_feas_info = True # Preload or not the feasible information from the feasible appartenance matrix. It has to be activated the first time so that the json file grouping the essential information from the feasible appartenance matrix can be saved (it may take more than 30 minutes for 100 000 patches in the dataset). \
 pred_type = 'bicub' # The model used for the predictions ('diff' for the opensr-modelm 'bilin' for bilinear interpolation and 'bicub' for bicubic interpolation) \
-p = 2 # The p parameter for Kernelsize and the loss computations
+p = 2 # The p parameter for kernel size and the loss computations
 
 
 Modify the paths root_folder, feas_app_lightl_path etc manually in the file, according the needs.
@@ -145,7 +151,7 @@ The following functions can be activated or deactivated :
 
 - metrics_opensrtest checks the consistency of the predictions with the results shown by [opensr-test](https://github.com/ESAOpenSR/opensr-test)
 
-- compute_LB_dists computes distances for the loss and the Kernelsize terms and stores them.
+- compute_LB_dists computes distances for the loss and the kernel size terms and stores them.
 
 - get_LB_loss_points displays the half Kernesize lower bound and the Loss terms.
 
