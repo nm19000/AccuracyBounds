@@ -1,7 +1,5 @@
 # Accuracy Bounds
 
-## Accuracy Bound for Inverse Problems
-
 Install project with 
 
 ""
@@ -54,7 +52,7 @@ For the definition of the worst-case kernel size, see [preprint](https://arxiv.o
 
 ## Experiments from [Paper](https://arxiv.org/abs/2510.10229)
 
- We demonstrate the validity of the algorithms on two inverse problems from different domains: fluorescence localization microscopy and super-resolution of multi-spectral satellite data. The code for generating the data for reproducing the localization microscopy experiments can be found in the examples/data/localization_microscopy. To reproduce the tabular data for the figures and tables in this manuscript, the average kernel size and loss computations, can be found in examples/example_localizationmicroscopy.ipynb. The instructions for reproducing the satellite data super-resolution experiments are to be found below. 
+ We demonstrate the validity of the algorithms on two inverse problems from different domains: fluorescence localization microscopy and super-resolution of multi-spectral satellite data. The code for generating the data for reproducing the localization microscopy experiments can be found in examples/data/localization_microscopy/data_A/source_code. The data used for the localization microscopy experiments can be found in examples/data/localization_microscopy. To reproduce the tabular data for the figures and tables in this manuscript, the average kernel size and loss computations, can be found in examples/example_localizationmicroscopy.ipynb. The instructions for reproducing the satellite data super-resolution experiments are to be found below. 
 
 ### Satellite Data Super Resolution Experiments
 
