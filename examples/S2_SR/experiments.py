@@ -279,12 +279,12 @@ def get_LB_loss_points(dists_LB, dists_loss, p,enrichment_type, KS_type, idx_ord
 if __name__ == '__main__':
     Test = False # Whether we use a small test dataset or the full one
     DSHR = True
-    light_loading = False
+    light_loading = False # Whether you use the light dataloader or you want to use stored patches
     PS_X = 16
     PS_Y = PS_X//4
     p_norm = 2
     SR_factor = 4
-    #noise_level_KS = 1333 # has to be 4000 or 1333
+    #noise_level_KS = 1333 
     noise_level_KS = 4000 # has to be 4000 or 1333 (only noise levels for which the Kersize has been calculated)
     preload_feas_info = True
     border_pnull = 2
