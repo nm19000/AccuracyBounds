@@ -23,9 +23,14 @@ $$
 \text{recover } x \in \mathcal{M}_1 \subset \mathbb{C}^{d_1} \text{ given noisy measurements } y = F(x,e)\in \mathbb{C}^{d_2} \text{ of } x  \text{ and }  e \in \\mathcal{E}\subset \mathbb{C}^{d_3}.
 $$
 
+The lower bound to the average error of any approximate inverse map is the average kernel size. The definition of and algorithms for computing the average kernel size are to be found in the following [preprint](https://arxiv.org/abs/2510.10229).
+
+The lower bound to the worst-case error of any approximate inverse map is the worst-case kernel size. The definition of the worst-case kernel size can be found in the following [preprint](https://arxiv.org/abs/2311.16898).
+
+
 
 # References
-If you use this software in your work, please cite our [paper](https://arxiv.org/abs/2510.10229)
+If you use this software in your work, please cite our [preprint](https://arxiv.org/abs/2510.10229):
 
 ```bibtex
 @article{gottschling2025average,
@@ -36,22 +41,32 @@ If you use this software in your work, please cite our [paper](https://arxiv.org
 }
 ```
 
+For the definition of the worst-case kernel size, see [preprint](https://arxiv.org/abs/2311.16898):
+
+```bibtex
+@article{gottschling2023existence,
+  title={On the existence of optimal multi-valued decoders and their accuracy bounds for undersampled inverse problems},
+  author={Gottschling, Nina Maria and Campodonico, Paolo and Antun, Vegard and Hansen, Anders C},
+  journal={arXiv preprint arXiv:2311.16898},
+  year={2023}
+}
+```
+
 ## Experiments from [Paper](https://arxiv.org/abs/2510.10229)
 
  We demonstrate the validity of the algorithms on two inverse problems from different domains: fluorescence localization microscopy and super-resolution of multi-spectral satellite data. The code for generating the data for reproducing the localization microscopy experiments can be found in the examples/data/localization_microscopy. To reproduce the tabular data for the figures and tables in this manuscript, the average kernel size and loss computations, can be found in examples/example_localizationmicroscopy.ipynb. The instructions for reproducing the satellite data super-resolution experiments are to be found below. 
 
 ### Satellite Data Super Resolution Experiments
 
-Aditionally install the the opensr-model library to perform the Super Resolution inference https://github.com/ESAOpenSR/opensr-model
+Aditionally to this project, install the the [opensr-model library](https://github.com/ESAOpenSR/opensr-model) to perform the super-resolution inference with
 
 pip install opensr-model
 
-and the opensr_test to perform the tests : https://github.com/ESAOpenSR/opensr-test 
+and the [opensr_test library](https://github.com/ESAOpenSR/opensr-test) to perform the tests with 
 
 pip install opensr-test
 
-
-It is assumed that the Satellite data after Super resolution inference is stored under the following structure : 
+The satellite data after the super-resolution inference should be stored under the following structure : 
 
 cross_processed/ \
 ├── naip/ \
@@ -79,43 +94,40 @@ cross_processed/ \
 │ │ ├── ... \
 │ ├── ... \
 
-The data used in our experiments can be downloaded from the indications on https://huggingface.co/datasets/isp-uv-es/opensr-test 
+The data used in our experiments can be downloaded from the indications on [huggingface](https://huggingface.co/datasets/isp-uv-es/opensr-test). 
 
 
-The folders and the files cqn be renamed according to the code
-
-### Preliminary Kernel size computations
+### Preliminary Kernelsize Computations
 
 Run the command
  " python test/S2_SR/Kernelsize_computations.py "
  with the desired options specified in the file Kernelsize_computations.py 
 
-### Preliminary operator calculation
+### Preliminary Operator Computations
 
-To calculate the Downsampling operator and its kernel projection under matrix form, run
+To calculate the downsampling operator and its kernel projection in matrix form, run
 
 " python examples/S2_SR/op_testing.py "
 
-Change manually the values of the following variables inside the python file to enable or discard the corresponding computation or visualization : 
+Manually change the values of the following variables inside the python file to enable or discard the corresponding computation or visualization : 
 
 plot_sparsity = False # To plot the sparsity pattern of the operators \
 check_DSOp = False  # To check that the downsampling operator uner matrix is correctly computed \
 computeDS = False # To compute the downsampling operator under matrix form \
-compute_P_null = False # To compute the Null space projection \
-check_P_null = False # To check that the Null space projection operator uner matrix is correctly computed\
+compute_P_null = False # To compute the kenrel projection \
+check_P_null = False # To check that the kernel projection operator uner matrix is correctly computed\
 scale_plot = False # To plot some satellite images with the scale bars \
 
-The path of the dataset can as wall be changed according to the needs.
 
 ### Run the experiments
 
-After having run the preliminary Kernel size and Kernel projection operator computations, the experiments are ready to be reproduced with the command 
+After having run the preliminary kernelsize and kernel projection operator computations, the experiments are ready to be reproduced with the command 
 
 ""
 python test/S2_SR/experiments.py
 ""
 
-Adjust inside the python file the following parameters : 
+Adjust the following parameters inside the python file: 
 
 DSHR = True # Whether the lower resolution image is the downsampled version of the high resolution image (we run the experiments with DSHR = true)\
 light_loading = False # Whether you use the light dataloader or you want to use stored patches. We run the experiments with the parameter set to false, but it is recommended for more memory and speed efficiency. Warning : it has to correspond with the value of the --light_load parameter in the kernel size computations . If light_loading is set to false, you will need to generate a dataset where each file corresponds to a patch. This can be done using the function build_S2_patched_dataset_DSHR or build_S2_patched_dataset in the utils.py file. Warning such a patched dataset may contain more than 100 000 patches files for 119 full sized images. It is therefore not recommended. If activated, use the dataset SRDataset_perimg_lightload instead of the dataset SRDataset_perimg \
@@ -133,9 +145,9 @@ Modify the paths root_folder, feas_app_lightl_path etc manually in the file, acc
 
 The following functions can be activated or deactivated : 
 
-- metrics_opensrtest checks the consistency of the predictions with the results shown by opensr-test in https://github.com/ESAOpenSR/opensr-test
+- metrics_opensrtest checks the consistency of the predictions with the results shown by [opensr-test](https://github.com/ESAOpenSR/opensr-test)
 
 - compute_LB_dists computes distances for the loss and the Kernelsize terms and stores them.
 
-- get_LB_loss_points displays the half Kernesize lower bound and the Loss terms
+- get_LB_loss_points displays the half Kernesize lower bound and the Loss terms.
 
