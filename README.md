@@ -136,9 +136,21 @@ $$
 - $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K=\left(\frac{1}{K} \text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K\right)^{1/p}$
 - Return $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K$ 
 
+# References
+If you use this software in your work, please cite our [paper](https://arxiv.org/abs/2510.10229)
 
+```bibtex
+@article{gottschling2025average,
+  title={Average Kernel Sizes--Computable Sharp Accuracy Bounds for Inverse Problems},
+  author={Gottschling, Nina M and Iagaru, David and Gawlikowski, Jakob and Sgouralis, Ioannis},
+  journal={arXiv preprint arXiv:2510.10229},
+  year={2025}
+}
+```
 
-# Satellite data Super Resolution experiments
+# Experiments from [paper](https://arxiv.org/abs/2510.10229)
+
+### Satellite Data Super Resolution Experiments
 
 Aditionally install the the opensr-model library to perform the Super Resolution inference https://github.com/ESAOpenSR/opensr-model
 
@@ -236,14 +248,4 @@ The following functions can be activated or deactivated :
 - compute_LB_dists computes distances for the loss and the Kernelsize terms and stores them.
 
 - get_LB_loss_points displays the half Kernesize lower bound and the Loss terms
-# References
-If you use this software in your work, please cite our [paper](https://arxiv.org/abs/2510.10229)
 
-```bibtex
-@article{gottschling2025average,
-  title={Average Kernel Sizes--Computable Sharp Accuracy Bounds for Inverse Problems},
-  author={Gottschling, Nina M and Iagaru, David and Gawlikowski, Jakob and Sgouralis, Ioannis},
-  journal={arXiv preprint arXiv:2510.10229},
-  year={2025}
-}
-```
