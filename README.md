@@ -177,6 +177,8 @@ cross_processed/ \
 │ │ ├── ... \
 │ ├── ... \
 
+The data used in our experiments can be downloaded from the indications on https://huggingface.co/datasets/isp-uv-es/opensr-test 
+
 
 The folders and the files cqn be renamed according to the code
 
