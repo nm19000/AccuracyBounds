@@ -1,5 +1,4 @@
-from src.accuracy_bounds.inverseproblems.utils import MatrixOpCalculator
-from utils import DS_operator_32
+from utils import DS_operator_32, MatrixOpCalculator
 from scipy import sparse
 from scipy.sparse import hstack, identity, load_npz
 import numpy as np
@@ -9,7 +8,8 @@ import json
 from tqdm import tqdm
 import torch
 import rasterio
-from utils import apply_square_op_small, apply_square_op_full, rescale_plot, ImgComparator, get_distance
+from utils import apply_square_op_small, apply_square_op_full, rescale_plot, ImgComparator, get_distance, apply_upsampling
+
 
 from opensr_test.config import Config
 from opensr_test.main import Metrics
@@ -20,9 +20,10 @@ if __name__ == '__main__':
     computeDS = False # To compute the downsampling operator under matrix form
     compute_P_null = False # To compute the Null space projection 
     check_P_null = False # To check that the Null space projection operator uner matrix is correctly computed
-    scale_plot = False # To plot some satellite images with the scal bars
+    scale_plot = False # To plot some satellite images with the scale bars
+    dset_folder = '../sat_data/cross_processed'  # Folder where the data is stored
 
-    border = 16
+    border = 16 # Do not change for S2 SR applications
 
     OP_calculator = MatrixOpCalculator(n_in=128*128, n_out = 32*32, Operator=DS_operator_32)
 
@@ -56,7 +57,7 @@ if __name__ == '__main__':
         
 
 
-    dset_folder = '../sat_data/cross_processed'
+    
     subdsets = ['spain_crops','naip' ,'spain_urban','spot']
     
 
@@ -64,25 +65,16 @@ if __name__ == '__main__':
     config = Config()
     metrics = Metrics(config=config)
 
-    img_moments_path = os.path.join(dset_folder, 'reflectance_moments.json')
-    with open(img_moments_path, 'r') as f:
-        img_moments_dic = json.load(f)
-
-    distY_jsonpath = os.path.join(dset_folder, 'distY_distr.json')
-    # Load the distribution data from the JSON file
-    with open(distY_jsonpath, 'r') as f:
-        distY_distr = json.load(f)
+  
 
 
     for subds in subdsets:    
         data_folder = os.path.join(dset_folder, subds)
         img_folders = os.listdir(data_folder)
         bar = img_folders
-        img_moments = img_moments_dic[subds]
-        mu0, sigma0 = torch.tensor(distY_distr[subds]['mean']), torch.tensor(distY_distr[subds]['sigma'])
-        opt_alpha = mu0/img_moments[0]
+        
 
-        noise_level = mu0 + 2*sigma0
+        
         for idxstr in tqdm(bar):
             img_folder = os.path.join(data_folder, idxstr)
             lr_path = f'{img_folder}/lr_res.tif'
@@ -133,6 +125,7 @@ if __name__ == '__main__':
                 fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
 
                 print(f'cosine  (x_null, x-x_null) : {torch.dot(hr_null.flatten(), (metrics.hr - hr_null).flatten()) / (torch.norm(hr_null.flatten(),2) * torch.norm((metrics.hr - hr_null).flatten(),2))}')
+                print('It should be close to 0')
                 plt.show()
 
             if scale_plot:
@@ -256,7 +249,7 @@ if __name__ == '__main__':
                 hr_test=  torch.tensor(metrics.hr[:, 100:228, 100:228])
 
                 #Testing whether we computed well the forward operator under matrix form
-                DS_img_original = metrics.apply_upsampling(torch.tensor(hr_test),metrics.scale_factor).squeeze(0)
+                DS_img_original = apply_upsampling(torch.tensor(hr_test),metrics.scale_factor).squeeze(0)
 
                 DS_img_mat = apply_square_op_small(A_sparse, hr_test, out_2Dshape=DS_img_original.shape[1:])
 

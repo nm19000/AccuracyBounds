@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path',type = str ,help='The folder you store your data in')
     parser.add_argument('--save_folder',type = str ,help='Where do you want to save your feasibility appartenance and distsXX matrices to disk')
     parser.add_argument('--noise_level', type=int, default=4000, help='Noise level for the Kersize algorithm')
-    parser.add_argument('--patch_size', type=int, default=12, help='Size of the patches to use for distance computation (default: 12)')
+    parser.add_argument('--patch_size', type=int, default=16,help='Size of the patches to use for distance computation (default: 16')
     parser.add_argument('--batch_size', type=int, default=1000, help='Batch size to use for distance computation')
     parser.add_argument('--light_load', action='store_true', default=True)
     #parser.add_argument('--DSHR', action = 'store_true', default=False, help='If activated, the Lr image as input will be DS(HR) where DS is a bilinear interpolation. Else, it will be the original LR image from the dataset (be careful, the original pair LR,HR doesnt match perfectly well, the DS is crosssensor)')

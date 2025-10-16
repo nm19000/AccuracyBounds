@@ -6,7 +6,12 @@ from rasterio.transform import from_origin
 import os
 from tqdm import tqdm
 from typing import List, Optional, Union
+from multiprocessing import Pool, cpu_count
+from scipy.sparse.linalg import svds
+from scipy.sparse import coo_matrix
 from abc import ABC, abstractmethod
+from joblib import Parallel, delayed
+
 
 
 class DistanceMetric(ABC):
@@ -503,7 +508,48 @@ def get_patches_from_S2(img,patchsize, border):
     return all_patches
 
 
-def build_S2_patched_dataset_DSHR(patchsize_X,img_dset_folder , subdatasets , out_dsfolder, labels = ('hr_data', 'lr_data'), border_X = 0, SR_factor = 4):
+def get_feasible_info(distsXX,feasible_appartenance):
+    """
+    Computes information for each feasible set F_y:
+    - Diameter of F_y (maximum pairwise distance within F_y),
+    - Indices of elements corresponding to the diameter,
+    - Cardinality of F_y (number of elements in the feasible set).
+
+    Args:
+        distsXX: (scipy.sparse matrix) Pairwise distance matrix between target samples.
+        feasible_appartenance: (scipy.sparse matrix) Feasible appartenance matrix.
+
+    Returns:
+        list: List of (diam_Fy, [i, j], cardinality) for each target sample.
+    """
+
+    def get_info(y_idx, fa, dXX):
+        # Getting the indexes of x's in the F_y
+        valid_idx = fa[:,y_idx].nonzero()[0]
+
+        # restricting the distsXX matrix to F_y and doing the corresponding computations
+        subdistXX = dXX[valid_idx, :][:, valid_idx]
+        subdistXX = subdistXX.toarray() 
+        
+        if subdistXX.size == 0:
+            return 0, (None, None), 0
+        
+
+        diam_Fy = np.nanmax(subdistXX)
+        flat_index = np.nanargmax(subdistXX)
+        row, col = np.unravel_index(flat_index, subdistXX.shape)
+
+        i = valid_idx[row]
+        j = valid_idx[col]
+
+
+        return float(diam_Fy), [int(i), int(j)], int(subdistXX.shape[0])
+    n,p = feasible_appartenance.shape
+
+    return list(Parallel(n_jobs=-1, backend='threading')(delayed(get_info)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p))))
+
+
+def build_S2_patched_dataset_DSHR(patchsize_X,img_dset_folder , subdatasets , out_dsfolder, labels = ('hr_res', 'lr_res'), border_X = 0, SR_factor = 4):
     """
     Builds a patched dataset for S2 images with downsampled high-resolution images, as LR images
     and saves it into the desired folder
@@ -727,3 +773,77 @@ def rescale_plot(img):
     minval = torch.min(img)
     maxval = torch.max(img)
     return (img-minval)/(maxval-minval)
+
+class MatrixOpCalculator:
+    def __init__(self, n_in, n_out, Operator, num_workers = None, singular_threshold_ratio = 0.001):
+        self.n_in = n_in
+        self.n_out = n_out
+        self.operator = Operator
+        self.num_workers=num_workers
+        if num_workers is None:
+            self.num_workers = cpu_count()
+        self.singular_threshold_ratio = singular_threshold_ratio
+    
+    # Compute column i of the sparse matrix
+    def compute_column(self,i):
+        A = self.operator
+        e_i = np.zeros(self.n_in)
+        e_i[i] = 1.0
+        col = A(e_i)
+
+        # Find non-zero entries
+        row_idx = np.nonzero(col)[0]
+        data = col[row_idx]
+        col_idx = np.full_like(row_idx, i)
+      
+        return row_idx, col_idx, data
+    
+    def build_sparse_matrix_parallel(self):
+        n_in = self.n_in
+        n_out = self.n_out
+
+        with Pool(self.num_workers) as pool:
+            # Run in parallel
+            results = list(tqdm(pool.imap(self.compute_column, range(n_in)), total=n_in))
+
+        # Collect results
+        row_indices = []
+        col_indices = []
+        data = []
+
+        for r, c, d in results:
+            row_indices.extend(r)
+            col_indices.extend(c)
+            data.extend(d)
+
+        # Create sparse matrix in COO format first, then convert
+        A_sparse = coo_matrix((data, (row_indices, col_indices)), shape=(n_out, n_in)).tocsc()
+        return A_sparse
+        
+    
+    def get_range_space_basis(self, A_sparse, sigma_threshold_ratio = 0.001):
+        # Compute a few smallest singular values
+        p,q = A_sparse.shape
+        kmax = int(min(p,q)-1)
+        #t0 = time.time()
+        umat, sing, vt = svds(A_sparse, k =kmax )  # smallest magnitude
+        #t1 = time.time()
+        #print(f'Took {t1-t0:2f} seconds to compute the SVD of A for kmax = {kmax}')
+
+        # Null space basis vectors: columns of vt.T corresponding to near-zero singular values
+        threshold = sigma_threshold_ratio * np.max(sing)
+        range_space_basis = vt[sing >= threshold].T
+        #print(f'Sigma 1 = {np.max(sing)}')
+        return range_space_basis
+
+
+
+    def make_null_projection_operator(self,range_basis):
+        n = range_basis.shape[0]
+
+        #def matvec(x):
+        #    return null_basis @ (null_basis.T @ x)
+
+        #return LinearOperator((n, n), matvec=matvec, dtype=null_basis.dtype)
+        return  np.eye(n)- range_basis.dot(range_basis.T)
+

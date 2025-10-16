@@ -2024,54 +2024,11 @@ class SRDataset(Dataset):
             maxdiam_position = int(maxdiam_position[0]), int(maxdiam_position[1])
             i_base, j_base = maxdiam_position
 
-            if False:
-                maxdiam_1D_pos = self.get_patch_idx_img(maxdiam_position)
-                print(f'Info Fy : {Fy_infos[maxdiam_1D_pos]}')
 
 
             idx_Fy_lim1 = Fy_lim1_idx_small[i_base, j_base] # index of the corresponding 1st patch (call it P1) associated to diam Fy 
             idx_Fy_lim2 = Fy_lim2_idx_small[i_base, j_base] # same for second one (call it P2)
 
-            if False:
-                print()
-                print(f'idx_lim1 normallly : {idx_Fy_lim1}')
-                print(f'idx_lim2 normallly : {idx_Fy_lim2}')
-
-                print(f'Base position normally : {maxdiam_position}')
-                base_1D_pos = self.get_patch_idx_img(maxdiam_position)
-                base_idx = self.imgs_idx_list[(subdataset, img_idx)][base_1D_pos]
-                print(f'Base idx normally : {base_idx}')
-                print()
-
-            if False:
-                lim_patch1_id = self.patch_ids[int(idx_Fy_lim1)]
-                img_lim1_id = self.get_img_id(int(idx_Fy_lim1))
-                patch_lim1_nb = lim_patch1_id.split('_')[-1]
-                
-                position_img_lim1 = self.get_patch_position(int(patch_lim1_nb))
-                i_lim1, j_lim1 = position_img_lim1
-
-                pos1D_lim1 = self.get_patch_idx_img((i_lim1, j_lim1))
-
-                idx_lim1 = self.imgs_idx_list[img_lim1_id][pos1D_lim1]
-
-                
-
-                print(f'idx_lim1 after f f^-1 :{idx_lim1}')
-                print(f'img_lim1 : {img_lim1_id}')
-
-                lim_patch2_id = self.patch_ids[int(idx_Fy_lim2)]
-                img_lim2_id = self.get_img_id(int(idx_Fy_lim2))
-                patch_lim2_nb = lim_patch2_id.split('_')[-1]
-                position_img_lim2 = self.get_patch_position(int(patch_lim2_nb))
-                i_lim2, j_lim2 = position_img_lim2
-
-                pos1D_lim2 = self.get_patch_idx_img((i_lim2, j_lim2))
-
-                idx_lim2 = self.imgs_idx_list[img_lim2_id][pos1D_lim2]
-
-                print(f'idx_lim2 after f f^-1 :{idx_lim2}')
-                print(f'img_lim2 : {img_lim2_id}')
                 
 
             lim_patch1_id = self.patch_ids[int(idx_Fy_lim1)] # the corresponding patch ids
@@ -2135,29 +2092,7 @@ class SRDataset(Dataset):
             replaced_prop_lim1 = np.sum(closed_mask_lim1>0.5)/(patched_shape[0] * patched_shape[1])
             replaced_prop_lim2 = np.sum(closed_mask_lim2>0.5)/(patched_shape[0] * patched_shape[1])
 
-            #print(f'n_iter = {n_iter-1}     n_replace = {n_replace-1} \n replaced_prop_lim1 = {np.round(100*replaced_prop_lim1)}%    replaced_prop_lim2 = {np.round(100*replaced_prop_lim2)}%')
 
-            if False and n_iter %100 ==0:
-           
-                fig, axs = plt.subplots(1, 2, figsize=(10, 10))
-                axs = axs.flatten()
-
-             
-                axs[0].imshow(replace_lim1_order>0.5, cmap='gray')
-                axs[0].set_title('Replaced areas lim 1 ')
-                axs[1].imshow(replace_lim2_order>0.5, cmap='gray')
-                axs[1].set_title('Replaced areas lim 2')
-
-                plt.tight_layout()
-                plt.show()
-                pass
-
-             # For eqch limit image, 
-             # 1. Get the area of search using position in the imglim 
-
-             #Within the condition that the patch is not in the masked area
-             # 2.Check for which patches, the patch if imglim belongs to the corresponding feasible set in the base image (shift to take in account)        mask_lim1 = torch.zeros(self.patched_shape)
-             # 3. Take the connected component around the patch in question and paste it to the basee image
         
         return replace_lim1_idx,replace_lim2_idx, replace_lim1_order, replace_lim2_order
 
