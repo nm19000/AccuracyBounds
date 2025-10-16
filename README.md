@@ -136,4 +136,11 @@ $$
 
 
 # References
-[1] Gottschling, Nina Maria, et al. "On the existence of optimal multi-valued decoders and their accuracy bounds for undersampled inverse problems." arXiv preprint arXiv:2311.16898 (2023).
+If you use this software in your work, please cite our \href{https://arxiv.org/abs/2510.10229}{paper}
+
+@article{gottschling2025average,
+  title={Average Kernel Sizes--Computable Sharp Accuracy Bounds for Inverse Problems},
+  author={Gottschling, Nina M and Iagaru, David and Gawlikowski, Jakob and Sgouralis, Ioannis},
+  journal={arXiv preprint arXiv:2510.10229},
+  year={2025}
+}
