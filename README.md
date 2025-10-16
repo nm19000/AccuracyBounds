@@ -8,6 +8,8 @@ Install project with
 pip install -e .
 ""
 
+
+
 # Accuracy Bounds
 
 ## Accuracy Bounds for Inverse Problems
@@ -135,5 +137,102 @@ $$
 - Return $\text{Kersize}(F,\mathcal{M}_1,\mathcal{E},p)_K$ 
 
 
+
+# Satellite data Super Resolution experiments
+
+Aditionally install the the opensr-model library to perform the Super Resolution inference https://github.com/ESAOpenSR/opensr-model
+
+pip install opensr-model
+
+and the opensr_test to perform the tests : https://github.com/ESAOpenSR/opensr-test 
+
+pip install opensr-test
+
+
+It is assumed that the Satellite data after Super resolution inference is stored under the following structure : 
+
+cross_processed/ \
+├── naip/ \
+│ ├── 1/ \
+│ │ ├── high resolution image (hr_res.tif) \
+│ │ ├── low resolution image (lr_res, DSHR_res or lr .tif) \
+│ │ ├── Prediction from high resolution image (sr_res or sr_res_fromDSHR .tif) \
+│ ├── 2/ \
+│ │ ├── ... \
+│ ├── ... \
+├── spain_crops/ \
+│ ├── 1/ \
+│ │ ├── ... \
+│ ├── 2/ \
+│ ├── ... \
+├── spain_urban/ \
+│ ├── 1/ \
+│ │ ├── ... \
+│ ├── 2/ \
+│ ├── ... \
+├── spot/ \
+│ ├── 1/ \
+│ │ ├── ... \
+│ ├── 2/ \
+│ │ ├── ... \
+│ ├── ... \
+
+
+The folders and the files cqn be renamed according to the code
+
+## Preliminary Kernel size computations
+
+Run the command
+ " python test/S2_SR/Kernelsize_computations.py "
+ with the desired options specified in the file Kernelsize_computations.py 
+
+## Preliminary operator calculation
+
+To calculate the Downsampling operator and its kernel projection under matrix form, run
+
+" python examples/S2_SR/op_testing.py "
+
+Change manually the values of the following variables inside the python file to enable or discard the corresponding computation or visualization : 
+
+plot_sparsity = False # To plot the sparsity pattern of the operators \
+check_DSOp = False  # To check that the downsampling operator uner matrix is correctly computed \
+computeDS = False # To compute the downsampling operator under matrix form \
+compute_P_null = False # To compute the Null space projection \
+check_P_null = False # To check that the Null space projection operator uner matrix is correctly computed\
+scale_plot = False # To plot some satellite images with the scale bars \
+
+The path of the dataset can as wall be changed according to the needs.
+
+## Run the experiments
+
+After having run the preliminary Kernel size and Kernel projection operator computations, the experiments are ready to be reproduced with the command 
+
+""
+python test/S2_SR/experiments.py
+""
+
+Adjust inside the python file the following parameters : 
+
+DSHR = True # Whether the lower resolution image is the downsampled version of the high resolution image (we run the experiments with DSHR = true)\
+light_loading = False # Whether you use the light dataloader or you want to use stored patches. We run the experiments with the parameter set to false, but it is recommended for more memory and speed efficiency. Warning : it has to correspond with the value of the --light_load parameter in the kernel size computations . If light_loading is set to false, you will need to generate a dataset where each file corresponds to a patch. This can be done using the function build_S2_patched_dataset_DSHR or build_S2_patched_dataset in the utils.py file. Warning such a patched dataset may contain more than 100 000 patches files for 119 full sized images. It is therefore not recommended. If activated, use the dataset SRDataset_perimg_lightload instead of the dataset SRDataset_perimg \
+PS_X = 16  # Patch size in high resolution (has to correspond with the kernel size computations) \
+PS_Y = PS_X//4 \
+p_norm = 2 # Defines the used norm among the $L^p$ norms \
+SR_factor = 4 # Leave it to 4 (super resolution factor) \
+noise_level_KS = 4000 # has to Correspond with the preliminary computations of the kernel size \
+preload_feas_info = True # Preload or not the feasible information from the feasible appartenance matrix. It has to be activated the first time so that the json file grouping the essential information from the feasible appartenance matrix can be saved (it may take more than 30 minutes for 100 000 patches in the dataset). \
+pred_type = 'bicub' # The model used for the predictions ('diff' for the opensr-modelm 'bilin' for bilinear interpolation and 'bicub' for bicubic interpolation) \
+p = 2 # The p parameter for Kernelsize and the loss computations
+
+
+Modify the paths root_folder, feas_app_lightl_path etc manually in the file, according the needs.
+
+The following functions can be activated or deactivated : 
+
+- metrics_opensrtest checks the consistency of the predictions with the results shown by opensr-test in https://github.com/ESAOpenSR/opensr-test
+
+- compute_LB_dists computes distances for the loss and the Kernelsize terms and stores them.
+
+- get_LB_loss_points displays the half Kernesize lower bound and the Loss terms
 # References
 [1] Gottschling, Nina Maria, et al. "On the existence of optimal multi-valued decoders and their accuracy bounds for undersampled inverse problems." arXiv preprint arXiv:2311.16898 (2023).

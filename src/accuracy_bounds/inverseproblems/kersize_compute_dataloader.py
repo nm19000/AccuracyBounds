@@ -193,8 +193,7 @@ def get_feasible_info(distsXX,feasible_appartenance):
 
         i = valid_idx[row]
         j = valid_idx[col]
-        if False:
-            print(f'y space : {y_idx}. Diam in {i}, {j}')
+
 
         return float(diam_Fy), [int(i), int(j)], int(subdistXX.shape[0])
     n,p = feasible_appartenance.shape
