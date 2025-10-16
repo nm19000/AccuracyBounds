@@ -136,11 +136,11 @@ $$
 
 
 # References
-If you use this software in your work, please cite our \href{https://arxiv.org/abs/2510.10229}{paper}
+If you use this software in your work, please cite our [paper](https://arxiv.org/abs/2510.10229)
 
-@article{gottschling2025average,
-  title={Average Kernel Sizes--Computable Sharp Accuracy Bounds for Inverse Problems},
-  author={Gottschling, Nina M and Iagaru, David and Gawlikowski, Jakob and Sgouralis, Ioannis},
-  journal={arXiv preprint arXiv:2510.10229},
-  year={2025}
+@article{gottschling2025average,\\
+  title={Average Kernel Sizes--Computable Sharp Accuracy Bounds for Inverse Problems},\\
+  author={Gottschling, Nina M and Iagaru, David and Gawlikowski, Jakob and Sgouralis, Ioannis},\\
+  journal={arXiv preprint arXiv:2510.10229},\\
+  year={2025}\\
 }
