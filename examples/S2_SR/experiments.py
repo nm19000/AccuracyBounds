@@ -10,7 +10,8 @@ from tqdm import tqdm
 from utils import bilinear_SR, bicubic_SR
 import pandas as pd
 import matplotlib.pyplot as plt
-from src.accuracy_bounds.inverseproblems.kersize_compute_dataloader import get_feasible_info
+from utils import get_feasible_info
+
 
 from opensr_test.main import Metrics
 from opensr_test.config import Config
@@ -151,23 +152,6 @@ def compute_LB_dists(data_path,preds_folder_path,feas_appartenance_patches, feas
         c,h,w = srbicub_img.shape
         srbicub_img = srbicub_img[:, :h-h%PS_X, :w-w%PS_X]
 
-        if False:
-            #plot lr, SR diff, SR bilin, SR bicub
-            fig, axes = plt.subplots(2,2)
-
-            axes[0,0].imshow(lr_img.permute(1,2,0)/3000)
-            axes[0,0].set_title('LR img')
-
-            axes[0,1].imshow(srdiff_img.permute(1,2,0)/3000)
-            axes[0,1].set_title(f'SR diff img \n Shape = {srdiff_img.shape}')
-
-            axes[1,0].imshow(srbicub_img.permute(1,2,0)/3000)
-            axes[1,0].set_title(f'SR Bicubic img  \n Shape = {srbicub_img.shape}')
-
-            axes[1,1].imshow(srbilin_img.permute(1,2,0)/3000)
-            axes[1,1].set_title(f'SR Bilinear img \n Shape = {srbilin_img.shape}')
-
-            plt.show()
 
 
         for sub_i in range(6):
@@ -277,15 +261,14 @@ def get_LB_loss_points(dists_LB, dists_loss, p,enrichment_type, KS_type, idx_ord
 
 
 if __name__ == '__main__':
-    Test = False # Whether we use a small test dataset or the full one
     DSHR = True
-    light_loading = False
+    light_loading = False # Whether you use the light dataloader or you want to use stored patches
     PS_X = 16
     PS_Y = PS_X//4
     p_norm = 2
     SR_factor = 4
-    #noise_level_KS = 1333 # has to be 4000 or 1333
-    noise_level_KS = 4000 # has to be 4000 or 1333 (only noise levels for which the Kersize has been calculated)
+    #noise_level_KS = 1333 
+    noise_level_KS = 4000 # has to Correspond with the preliminary computations
     preload_feas_info = True
     border_pnull = 2
     pred_type = 'bicub'
@@ -306,7 +289,6 @@ if __name__ == '__main__':
     for PS_X in [16]:
         patched_shapes = patched_shapes_all[PS_X]
         print(f'Computations for Patch size = {PS_X}')
-        print(f'Model : {pred_type}')
         print(f'Light loading : {light_loading}')
         if DSHR:
             DSHR_suffix = f'DSHR{SR_factor}'
@@ -314,22 +296,22 @@ if __name__ == '__main__':
             DSHR_suffix = ''
 
  
-        data_path = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/PS{PS_X}'
-        feas_app_lightl_path = f'{root_folder}/sat_data/cross_processed/results/NL{noise_level_KS}/feas_app_PS{PS_X}_NL{noise_level_KS}.npz'
-        distsXX_ligntl_path = f'{root_folder}/sat_data/cross_processed/results/NL{noise_level_KS}/distsXX_PS{PS_X}_NL{noise_level_KS}.npz'
-        json_lightl_path = f'{root_folder}/sat_data/cross_processed/results/NL{noise_level_KS}/feas_info_PS{PS_X}_NL{noise_level_KS}.json'
+        data_path = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/PS{PS_X}' # Path of the dataset
+        feas_app_lightl_path = f'{root_folder}/sat_data/cross_processed/results/NL{noise_level_KS}/feas_app_PS{PS_X}_NL{noise_level_KS}.npz' # To the feasible appartenance matrix file
+        distsXX_ligntl_path = f'{root_folder}/sat_data/cross_processed/results/NL{noise_level_KS}/distsXX_PS{PS_X}_NL{noise_level_KS}.npz' #  To the distances matrix file from the kernelsize computations
+        json_lightl_path = f'{root_folder}/sat_data/cross_processed/results/NL{noise_level_KS}/feas_info_PS{PS_X}_NL{noise_level_KS}.json' # To the information from the feasible appartenance matrix
 
         feas_app_path = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/feas_app_PS{PS_X}_NL{noise_level_KS}.npz'
         distsXX_path = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/distsXX_PS{PS_X}_NL{noise_level_KS}.npz'
         json_path = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}/feas_info_PS{PS_X}_NL{noise_level_KS}.json'
         
-        distances_outfolder = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}'
-        preds_folder_path = f'{root_folder}/sat_data/cross_processed'
-        P_null_path = f'{root_folder}/Operators/P_null_32.npy'
-        dists_LB_path = f'{distances_outfolder}/dists_LB_{PS_X}_{p_norm}norm.npy'
+        distances_outfolder = f'{root_folder}/sat_data/patched_crossproc_{DSHR_suffix}/results/NL{noise_level_KS}' # Path to the distances information to compute the lower bounds and the Loss
+        preds_folder_path = f'{root_folder}/sat_data/cross_processed' # Dataset where the predictions of the diffusion model are stored
+        P_null_path = f'{root_folder}/Operators/P_null_32.npy' # Where the matrix of the null space projection os stored
+        dists_LB_path = f'{distances_outfolder}/dists_LB_{PS_X}_{p_norm}norm.npy' # Distances for the kernelsize and the 
         dists_loss_path = f'{distances_outfolder}/dists_loss_{pred_type}_{PS_X}_{p_norm}norm.npy'
-        idx_order_path = f'{distances_outfolder}/idx_order_{PS_X}_{p_norm}norm.json'
-        classif_path = f'{preds_folder_path}/classif_dataset.json'
+        idx_order_path = f'{distances_outfolder}/idx_order_{PS_X}_{p_norm}norm.json' # Order of the images in the computations
+        classif_path = f'{preds_folder_path}/classif_dataset.json' # Category of each image : create your own file in the format of our example file classif_dataset.json, according to your data
 
         # Get the image ids in order to iterate afterwards
         subdatasets = ['naip', 'spain_crops', 'spain_urban', 'spot']
@@ -373,13 +355,19 @@ if __name__ == '__main__':
         if False: # Tests for the consistency of the results
             metrics_opensrtest(data_path,feas_appartenance_patches = feas_app, feas_info_patches= feas_info)        
   
-   
-        if False: # Get the values for the Avg Lb and loss after having made the computations
+    
+        if False:
+            # Do the computations for the LB and loss
+            compute_LB_dists(data_path,preds_folder_path, feas_app, feas_info, patched_shapes, distances_outfolder, PS_X, P_null_path)
+  
+
+        if False: # Get the values for the Avg Lb and loss after having made the computations with compute_LB_dists
+            print(f'Model : {pred_type}')
             dists_LB = np.load(dists_LB_path)
             dists_loss = np.load(dists_loss_path)
             
             for KS_type in ['sym', 'default']:
-                for enrichment_type in ['lim12', 'sym']:
+                for enrichment_type in [ 'sym']:
                     if not (KS_type == 'sym' and enrichment_type == 'lim12'):
                         print()
                         print()
@@ -394,11 +382,7 @@ if __name__ == '__main__':
                         print(f'Loss term computed over the restricted dataset : \n {restr_loss}')
                         print(f'Half Kernelsize computed over the Overall dataset : \n {ovr_LB}')
 
-        if False:
-            # Do the computations for the LB and loss
-            compute_LB_dists(data_path,preds_folder_path, feas_app, feas_info, patched_shapes, distances_outfolder, PS_X, P_null_path)
-  
-
+        
 
 
 
