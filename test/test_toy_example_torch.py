@@ -1,15 +1,22 @@
-import numpy as np
-import torch 
-from torch.utils.data import DataLoader
-from playground.generator_functions import random_uni_points_in_ball
-from accuracy_bounds.inverseproblems.feasible_sets import compute_feasible_set_linear_forwardmodel
-from accuracy_bounds.inverseproblems.kersize_compute import worstcase_kernelsize, worstcase_kernelsize_sym, average_kernelsize, average_kernelsize_sym
-from accuracy_bounds.inverseproblems.utils import apply_forwardmodel
-from accuracy_bounds.inverseproblems.kersize_compute_dataloader import worstcase_kernelsize_appartenance, average_kernelsize_appartenance, target_distances_cuda_V2
-from accuracy_bounds.inverseproblems.feasible_sets_dataloader import feasible_appartenance_additive_noise_dataloader_cuda, feasible_appartenance_additive_noise_cuda 
-from accuracy_bounds.inverseproblems.utils import torch_sparse_to_scipy_csr, torch_csr_to_scipy
+import importlib.util
+import pytest
+
+has_torch = importlib.util.find_spec("torch") is not None
+
+if has_torch:
+    import numpy as np
+    import torch 
+    from torch.utils.data import DataLoader
+    from playground.generator_functions import random_uni_points_in_ball
+    from accuracy_bounds.inverseproblems.feasible_sets import compute_feasible_set_linear_forwardmodel
+    from accuracy_bounds.inverseproblems.kersize_compute import worstcase_kernelsize, worstcase_kernelsize_sym, average_kernelsize, average_kernelsize_sym
+    from accuracy_bounds.inverseproblems.utils import apply_forwardmodel
+    from accuracy_bounds.inverseproblems.kersize_compute_dataloader import worstcase_kernelsize_appartenance, average_kernelsize_appartenance, target_distances_cuda_V2
+    from accuracy_bounds.inverseproblems.feasible_sets_dataloader import feasible_appartenance_additive_noise_dataloader_cuda, feasible_appartenance_additive_noise_cuda 
+    from accuracy_bounds.inverseproblems.utils import torch_sparse_to_scipy_csr, torch_csr_to_scipy
 
 
+@pytest.mark.skipif(not has_torch, reason="requires torch")
 def test_worstcase_cuda():
     num_points = 3000
     radius = 2
@@ -54,6 +61,7 @@ def test_worstcase_cuda():
 
     assert error < 0.3, f"Analytic Worstcase Kernel (Cuda) Error: {error}"
 
+@pytest.mark.skipif(not has_torch, reason="requires torch")
 def test_average_kersize_cuda():
     num_points = 3000
     radius = 2
@@ -97,6 +105,7 @@ def test_average_kersize_cuda():
 
     assert error < 0.3, f"Analytic Average Kernel (Cuda) Error: {error}"
 
+@pytest.mark.skipif(not has_torch, reason="requires torch")
 def test_feas_appartance_w_and_wo_dataloader():
 
     num_points = 3000
@@ -130,6 +139,3 @@ def test_feas_appartance_w_and_wo_dataloader():
     error = float(error_tensor.mean().item())  # scalar Python float
 
     assert error < 0.3, f"Feasible Appearance Error: {error}"
-
-
-test_feas_appartance_w_and_wo_dataloader()

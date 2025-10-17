@@ -17,11 +17,15 @@ dependencies = [
     "click",
     "pdoc",
     "numpy",
-    "torch",
     "tqdm",
     "joblib",
     "scipy",
     ]
+
+[project.optional-dependencies]
+torch = [
+    "torch",
+]
 
 [build-system]
 requires = [
