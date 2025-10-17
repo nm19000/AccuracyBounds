@@ -1,7 +1,7 @@
 # Accuracy Bounds
 
 This repository contains the official python-based implementation accompanying the paper:  
-**“Computable Sharp Accuracy Bounds for Inverse Problems”**  ([arXiv:2510.10229](https://arxiv.org/abs/2510.10229))
+**“Average Kernel Sizes - Computable Sharp Accuracy Bounds for Inverse Problems”**  ([arXiv:2510.10229](https://arxiv.org/abs/2510.10229))
 
 If you use this software in your work, please cite our [preprint](https://arxiv.org/abs/2510.10229):
 
