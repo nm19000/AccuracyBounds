@@ -1,7 +1,4 @@
 import numpy as np
-from multiprocessing import Pool, cpu_count
-import torch
-
 
 # Function to apply matrix transformation A to points
 def apply_forwardmodel(A, points):
