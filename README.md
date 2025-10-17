@@ -68,34 +68,11 @@ The lower bound to the worst-case error of any approximate inverse map is the wo
 
 # Testing 
 
-The algorithms for computing the worst-case and average kernel size are tested against linear algebra examples, where the worst-case and average kernel size can be calculated analytically in the limit of infinite datapoints. Thus, we ensure that the implemented algorithms compute the correct quantities. The algorithm versions that run with cuda can be tested with test/test_toy_example_cuda.py. The algorithm versions that only run with numpy can be tested with test/test_toy_example_np.py.
+The algorithms for computing the worst-case and average kernel size are tested against linear algebra examples, where the worst-case and average kernel size can be calculated analytically in the limit of infinite datapoints. Thus, we ensure that the implemented algorithms compute the correct quantities. The algorithm versions that run with cuda can be tested with ``test/test_toy_example_torch.py``. The algorithm versions that only run with numpy can be tested with ``test/test_toy_example_np.py``. All tests in the project can be automatically run by calling ``pytest``.
 
 For computing the feasible sets there are two versions to compute these available: in terms of list and in terms of feasible appartenance matrices that allocate data points to feasible sets. Both versions are suitable for forward models with additive noise.
 
 For interactive testing the algorithms to compute the worst-case and average kernel size with numpy and cuda please see ``test/playground/testing.ipynb``.
-
-# References
-If you use this software in your work, please cite our [preprint](https://arxiv.org/abs/2510.10229):
-
-```bibtex
-@article{gottschling2025average,
-  title={Average Kernel Sizes--Computable Sharp Accuracy Bounds for Inverse Problems},
-  author={Gottschling, Nina M and Iagaru, David and Gawlikowski, Jakob and Sgouralis, Ioannis},
-  journal={arXiv preprint arXiv:2510.10229},
-  year={2025}
-}
-```
-
-For the definition of the worst-case kernel size, see [preprint](https://arxiv.org/abs/2311.16898):
-
-```bibtex
-@article{gottschling2023existence,
-  title={On the existence of optimal multi-valued decoders and their accuracy bounds for undersampled inverse problems},
-  author={Gottschling, Nina Maria and Campodonico, Paolo and Antun, Vegard and Hansen, Anders C},
-  journal={arXiv preprint arXiv:2311.16898},
-  year={2023}
-}
-```
 
 ## Experiments from [Paper](https://arxiv.org/abs/2510.10229)
 
