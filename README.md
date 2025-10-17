@@ -3,17 +3,25 @@
 This repository contains the official python-based implementation accompanying the paper:  
 **“Computable Sharp Accuracy Bounds for Inverse Problems”**  ([arXiv:2510.10229](https://arxiv.org/abs/2510.10229))
 
-If you use this project in your work, please cite the following preprint:
+If you use this software in your work, please cite our [preprint](https://arxiv.org/abs/2510.10229):
 
 ```bibtex
-@misc{Gottschling2025AccuracyBounds,
-  title        = {Computable Sharp Accuracy Bounds for Inverse Problems},
-  author       = {Gottschling, Nina M. and Iagaru, David and Gawlikowski, Jakob and Sgouralis, Ioannis},
-  year         = {2025},
-  eprint       = {2510.10229},
-  archivePrefix= {arXiv},
-  primaryClass = {math.OC},
-  url          = {https://arxiv.org/abs/2510.10229}
+@article{gottschling2025average,
+  title={Average Kernel Sizes--Computable Sharp Accuracy Bounds for Inverse Problems},
+  author={Gottschling, Nina M and Iagaru, David and Gawlikowski, Jakob and Sgouralis, Ioannis},
+  journal={arXiv preprint arXiv:2510.10229},
+  year={2025}
+}
+```
+
+For the definition of the worst-case kernel size, see [preprint](https://arxiv.org/abs/2311.16898):
+
+```bibtex
+@article{gottschling2023existence,
+  title={On the existence of optimal multi-valued decoders and their accuracy bounds for undersampled inverse problems},
+  author={Gottschling, Nina Maria and Campodonico, Paolo and Antun, Vegard and Hansen, Anders C},
+  journal={arXiv preprint arXiv:2311.16898},
+  year={2023}
 }
 ```
 
