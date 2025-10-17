@@ -3,28 +3,6 @@
 This repository contains the official python-based implementation accompanying the paper:  
 **“Average Kernel Sizes - Computable Sharp Accuracy Bounds for Inverse Problems”**  ([arXiv:2510.10229](https://arxiv.org/abs/2510.10229))
 
-If you use this software in your work, please cite our [preprint](https://arxiv.org/abs/2510.10229):
-
-```bibtex
-@article{gottschling2025average,
-  title={Average Kernel Sizes--Computable Sharp Accuracy Bounds for Inverse Problems},
-  author={Gottschling, Nina M and Iagaru, David and Gawlikowski, Jakob and Sgouralis, Ioannis},
-  journal={arXiv preprint arXiv:2510.10229},
-  year={2025}
-}
-```
-
-For the definition of the worst-case kernel size, see [preprint](https://arxiv.org/abs/2311.16898):
-
-```bibtex
-@article{gottschling2023existence,
-  title={On the existence of optimal multi-valued decoders and their accuracy bounds for undersampled inverse problems},
-  author={Gottschling, Nina Maria and Campodonico, Paolo and Antun, Vegard and Hansen, Anders C},
-  journal={arXiv preprint arXiv:2311.16898},
-  year={2023}
-}
-```
-
 ## Installation
 
 This project has been tested under **Python 3.7** on a Unix development environment.  
@@ -174,6 +152,30 @@ Modify the paths root_folder, feas_app_lightl_path etc manually in the file, acc
 The following functions can be activated or deactivated : 
 
 - metrics_opensrtest checks the consistency of the predictions with the results shown by [opensr-test](https://github.com/ESAOpenSR/opensr-test)
+
+
+
+If you use this software in your work, please cite our [preprint](https://arxiv.org/abs/2510.10229):
+
+```bibtex
+@article{gottschling2025average,
+  title={Average Kernel Sizes--Computable Sharp Accuracy Bounds for Inverse Problems},
+  author={Gottschling, Nina M and Iagaru, David and Gawlikowski, Jakob and Sgouralis, Ioannis},
+  journal={arXiv preprint arXiv:2510.10229},
+  year={2025}
+}
+```
+
+For the definition of the worst-case kernel size, see [preprint](https://arxiv.org/abs/2311.16898):
+
+```bibtex
+@article{gottschling2023existence,
+  title={On the existence of optimal multi-valued decoders and their accuracy bounds for undersampled inverse problems},
+  author={Gottschling, Nina Maria and Campodonico, Paolo and Antun, Vegard and Hansen, Anders C},
+  journal={arXiv preprint arXiv:2311.16898},
+  year={2023}
+}
+```
 
 - compute_LB_dists computes distances for the loss and the kernel size terms and stores them.
 
