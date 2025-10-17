@@ -153,7 +153,11 @@ The following functions can be activated or deactivated :
 
 - metrics_opensrtest checks the consistency of the predictions with the results shown by [opensr-test](https://github.com/ESAOpenSR/opensr-test)
 
+- compute_LB_dists computes distances for the loss and the kernel size terms and stores them.
 
+- get_LB_loss_points displays the half Kernesize lower bound and the Loss terms.
+
+# Citation
 
 If you use this software in your work, please cite our [preprint](https://arxiv.org/abs/2510.10229):
 
@@ -177,7 +181,4 @@ For the definition of the worst-case kernel size, see [preprint](https://arxiv.o
 }
 ```
 
-- compute_LB_dists computes distances for the loss and the kernel size terms and stores them.
-
-- get_LB_loss_points displays the half Kernesize lower bound and the Loss terms.
 
