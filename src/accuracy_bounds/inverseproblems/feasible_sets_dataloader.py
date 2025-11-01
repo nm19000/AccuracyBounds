@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from torch.utils.data import DataLoader, SequentialSampler
 from scipy import sparse
-from accuracy_bounds.inverseproblems.utils import insert_no_overlap_keep_A, sparse_block, offset_csr_block
+from accuracy_bounds.inverseproblems.utils_torch import insert_no_overlap_keep_A, sparse_block, offset_csr_block
 
 def feasible_appartenance_additive_noise_batch_cuda(input_data, forwarded_target, p_Y, epsilon):
     """
