@@ -3,7 +3,7 @@ from joblib import Parallel, delayed
 import numpy as np
 from tqdm import tqdm
 from torch.utils.data import DataLoader, SequentialSampler
-from accuracy_bounds.inverseproblems.utils import insert_no_overlap_keep_A, sparse_block, offset_csr_block
+from accuracy_bounds.inverseproblems.utils_torch import insert_no_overlap_keep_A, sparse_block, offset_csr_block
 
 def target_distances_cuda_V2(target_data, feasible_appartenance, p_X, batchsize):
     """
