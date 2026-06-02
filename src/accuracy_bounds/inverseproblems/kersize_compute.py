@@ -14,7 +14,8 @@ def diams_feasibleset(feasible_set_y, p_1 ,p):
         - p: Order of the average kernel size. Set to p=2 for the MSE lower bound computation and p=1 for MAE lower bound computation.
     
     Returns:
-        - diameter_mean_y, num_feas, max_diam_Fy: diameter_mean_y of dim(0)= shape(input_data), the estimated mean diameter of the feasible set to the power p, 
+        - diameter_mean_y, num_feas, max_diam_Fy: diameter_mean_y of dim(0)= shape(input_data), the estimated "mean" 
+                                        (normalized by num_feas-1, i.e. lacking a factor num_feas) diameter of the feasible set to the power p, 
                                         consisting of all possible target data points, for one input point.
                                         num_feas is the number of samples in the feasible set and will be used for statistics later on.
                                         max_diam_Fy the maximum diameter of the feasible set, 
@@ -44,9 +45,9 @@ def diams_feasibleset(feasible_set_y, p_1 ,p):
                             
     # get mean over diams, with factor 2 due to symmetry of the norm of the compute vectors in null space of F (norm(x-z)=norm(z-x))
     # and divided by num_feas^2 ad we have that many terms
-    if num_feas > 0:      
+    if num_feas > 1:      
         # compute 2 times sum over diams to the power p divided by num_feas^2
-        diameter_mean_y = 2*np.divide(np.sum(np.power(diam_y,p)), np.power(num_feas,2))
+        diameter_mean_y = 2*np.divide(np.sum(np.power(diam_y,p)), num_feas-1)
     elif num_feas==0:
         diameter_mean_y = 0  
 
@@ -173,16 +174,18 @@ def average_kernelsize(feasible_sets_list, p_1, p):
    
     average_kersize = 0
     num_samples = len(feasible_sets_list)
+    normalization_m=0
 
     for feasible_set_y in feasible_sets_list:
         # compute diameter of feasible set for one input data point (num_feas will be used for statistics later on)
         diameter_mean_y, num_feas, max_diam_Fy = diams_feasibleset(feasible_set_y, p_1 ,p)
         #add diameters means for obtaining average kersize to the power p
         average_kersize = average_kersize + diameter_mean_y
+        normalization_m = normalization_m+num_feas
         
     # get mean over input data
     if average_kersize>0 and num_samples > 0:
-        average_kersize = np.divide(average_kersize, num_samples)   
+        average_kersize = np.divide(average_kersize, normalization_m)   
     else: 
         average_kersize = 0
     # take power 1/p to obtain average kersize
