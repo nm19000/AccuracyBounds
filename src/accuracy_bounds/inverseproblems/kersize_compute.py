@@ -46,9 +46,9 @@ def diams_feasibleset(feasible_set_y, p_1 ,p):
     # get mean over diams, with factor 2 due to symmetry of the norm of the compute vectors in null space of F (norm(x-z)=norm(z-x))
     # and divided by num_feas^2 ad we have that many terms
     if num_feas > 1:      
-        # compute 2 times sum over diams to the power p divided by num_feas^2
+        # compute 2 times sum over diams to the power p divided by num_feas-1
         diameter_mean_y = 2*np.divide(np.sum(np.power(diam_y,p)), num_feas-1)
-    elif num_feas==0:
+    else:
         diameter_mean_y = 0  
 
     return diameter_mean_y, num_feas, max_diam_Fy
@@ -228,4 +228,3 @@ def average_kernelsize_sym(A, input_data, target_data, p_1, p_2, p, epsilon):
     average_kersize_sym =  np.power(average_kersize_sym, 1/p)
     
     return average_kersize_sym
-
