@@ -267,7 +267,8 @@ def average_kernelsize_appartenance(distsXX, feasible_appartenance,p_X):
 
 
     n,p = feasible_appartenance.shape
-    results, size_feas_list = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p)))
+    output = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p)))
+    results, size_feas_list = zip(*output)
     normalization_m= np.sum(np.asarray(list(size_feas_list)))
     
     # get average over K input data samples (y) 
