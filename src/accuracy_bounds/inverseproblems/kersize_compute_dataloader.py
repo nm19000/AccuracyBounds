@@ -262,15 +262,28 @@ def average_kernelsize_appartenance(distsXX, feasible_appartenance,p_X):
         subdistXX = subdistXX.toarray()  # Convert to dense matrix for max computation
         
         size_feas = len(valid_idx)
+        if size_feas <= 1:
+            return 0.0, 0   
+    
+        subdistXX = dXX[valid_idx, :][:, valid_idx].toarray()
+    
         # compute average over sums of differences over twice the feasible sets 
-        return np.divide(np.nansum(np.power(subdistXX,p_X)), np.power(size_feas,2))
+        value = np.nansum(np.power(subdistXX, p_X)) / (size_feas - 1)
+        return value, size_feas
 
 
     n,p = feasible_appartenance.shape
-    results = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p)))
+    output = Parallel(n_jobs=-1)(delayed(compute_mean_distance)(y_idx, feasible_appartenance, distsXX) for y_idx in tqdm(range(p)))
+    results, size_feas_list = zip(*output)
+    
+    normalization_m= np.sum(np.asarray(list(size_feas_list)))
+    normalization_m = np.sum(size_feas_list)
 
+    if normalization_m == 0:
+        return 0.0
+    
     # get average over K input data samples (y) 
-    return np.power(np.nanmean(np.asarray(list(results))),np.divide(1,p_X))
+    return np.power(np.divide(np.sum(np.asarray(list(results))),normalization_m),np.divide(1,p_X))
 
 
 

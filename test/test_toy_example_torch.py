@@ -13,7 +13,7 @@ if has_torch:
     from accuracy_bounds.inverseproblems.utils import apply_forwardmodel
     from accuracy_bounds.inverseproblems.kersize_compute_dataloader import worstcase_kernelsize_appartenance, average_kernelsize_appartenance, target_distances_cuda_V2
     from accuracy_bounds.inverseproblems.feasible_sets_dataloader import feasible_appartenance_additive_noise_dataloader_cuda, feasible_appartenance_additive_noise_cuda 
-    from accuracy_bounds.inverseproblems.utils import torch_sparse_to_scipy_csr, torch_csr_to_scipy
+    from accuracy_bounds.inverseproblems.utils_torch import torch_sparse_to_scipy_csr, torch_csr_to_scipy
 
 
 @pytest.mark.skipif(not has_torch, reason="requires torch")
@@ -40,12 +40,13 @@ def test_worstcase_cuda():
 
     max_k = 3000
     batch_size = 100
+    num_workers = 0
 
     input_data_k = input_data[0:max_k,:]
     target_data_k = target_data[0:max_k,:]
-    input_loader1 = DataLoader(input_data_k, batch_size=batch_size, num_workers=batch_size, drop_last=False)
-    input_loader2 = DataLoader(input_data_k, batch_size=batch_size, num_workers=batch_size, drop_last=False)
-    target_loader1 = DataLoader(target_data_k, batch_size=batch_size, num_workers=batch_size, drop_last=False)
+    input_loader1 = DataLoader(input_data_k, batch_size=batch_size, num_workers=num_workers, drop_last=False)
+    input_loader2 = DataLoader(input_data_k, batch_size=batch_size, num_workers=num_workers, drop_last=False)
+    target_loader1 = DataLoader(target_data_k, batch_size=batch_size, num_workers=num_workers, drop_last=False)
 
     feasible_appartenance = feasible_appartenance_additive_noise_dataloader_cuda(input_loader1, input_loader2, p_Y=p_2, epsilon= epsilon)
     feasible_appartenance = feasible_appartenance.to(dtype=torch.float32).to_sparse_coo()
@@ -83,12 +84,13 @@ def test_average_kersize_cuda():
 
     max_k = 3000
     batch_size = 100
+    num_workers = 0
 
     input_data_k = input_data[0:max_k,:]
     target_data_k = target_data[0:max_k,:]
-    input_loader1 = DataLoader(input_data_k, batch_size=batch_size, num_workers=batch_size, drop_last=False)
-    input_loader2 = DataLoader(input_data_k, batch_size=batch_size, num_workers=batch_size, drop_last=False)
-    target_loader1 = DataLoader(target_data_k, batch_size=batch_size, num_workers=batch_size, drop_last=False)
+    input_loader1 = DataLoader(input_data_k, batch_size=batch_size, num_workers=num_workers, drop_last=False)
+    input_loader2 = DataLoader(input_data_k, batch_size=batch_size, num_workers=num_workers, drop_last=False)
+    target_loader1 = DataLoader(target_data_k, batch_size=batch_size, num_workers=num_workers, drop_last=False)
 
     feasible_appartenance = feasible_appartenance_additive_noise_dataloader_cuda(input_loader1, input_loader2, p_Y=p_2, epsilon= epsilon)
     feasible_appartenance = feasible_appartenance.to(dtype=torch.float32).to_sparse_coo()
@@ -122,9 +124,10 @@ def test_feas_appartance_w_and_wo_dataloader():
     ## Test if feasible appartenance matrix computation versions produce the same results
 
     batch_size = 100
+    num_workers = 0
 
-    input_loader1 = DataLoader(input_data, batch_size=batch_size, num_workers=batch_size, drop_last=False)
-    input_loader2 = DataLoader(input_data, batch_size=batch_size, num_workers=batch_size, drop_last=False)
+    input_loader1 = DataLoader(input_data, batch_size=batch_size, num_workers=num_workers, drop_last=False)
+    input_loader2 = DataLoader(input_data, batch_size=batch_size, num_workers=num_workers, drop_last=False)
 
     feas_app_1 = feasible_appartenance_additive_noise_dataloader_cuda(input_data=input_loader1, forwarded_target= input_loader2, p_Y=2, epsilon=epsilon)
     feas_app_2 = feasible_appartenance_additive_noise_cuda(input_loader1, input_loader2, p_Y=2, epsilon= epsilon, batchsize=50)
